@@ -1,0 +1,174 @@
+/* ============================================================
+   GuXia Fan Club — Global Retro Cyberpunk Theme
+   Extracted & optimized from gm_site_demo.html
+   ============================================================ */
+
+/* ── Reset ─────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ── Design Tokens ────────────────────────────────────── */
+:root {
+  /* Background */
+  --bg-primary: #0a0a0a;
+
+  /* Neon palette */
+  --neon-red: #ff0000;
+  --neon-green: #0f0;
+  --neon-yellow: #ff0;
+  --neon-pink: #f0f;
+  --neon-cyan: #0ff;
+  --neon-orange: #ff6600;
+  --neon-blue: #002bff;
+  --neon-purple: #7a00ff;
+
+  /* Border glow presets */
+  --glow-red: 0 0 15px #ff0000;
+  --glow-green: 0 0 15px #0f0;
+  --glow-yellow: 0 0 15px #ff0;
+  --glow-pink: 0 0 15px #f0f;
+  --glow-cyan: 0 0 15px #0ff;
+  --glow-strong-red: 0 0 30px #f00, 0 0 60px #ff0;
+  --glow-strong-purple: 0 0 30px #f0f, 0 0 60px #0ff;
+
+  /* Font stack */
+  --font-display: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif;
+  --font-mono: "Courier New", monospace;
+}
+
+/* ── Body base ────────────────────────────────────────── */
+body {
+  background: var(--bg-primary);
+  color: #fff;
+  font-family: var(--font-display);
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   Keyframe Animations (reduced frequency from demo)
+   ============================================================ */
+
+/* Smooth rainbow gradient scroll — from demo .top-banner */
+@keyframes rainbow-bg {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* Subtle glitch offset — NOT infinite.
+   Use with short duration, triggered sparingly. */
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  10%      { transform: translate(-2px, 1px); }
+  20%      { transform: translate(2px, -1px); }
+  30%      { transform: translate(-1px, -2px); }
+  40%      { transform: translate(1px, 2px); }
+  50%      { transform: translate(0); }
+}
+
+/* Marquee scroll — from demo .marquee-content */
+@keyframes marquee {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Blink opacity toggle — from demo .top-banner .subtitle etc.
+   Consolidated to single duration (1.5s), was scattered in demo. */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* Pulsing border color + shadow — from demo .ad-item */
+@keyframes pulse-border {
+  0%, 100% { border-color: #ff0; box-shadow: 0 0 8px #ff0; }
+  50%      { border-color: #f00; box-shadow: 0 0 20px #f00; }
+}
+
+/* Bouncy scale-in — from demo .float-popup */
+@keyframes popup-bounce {
+  0%   { transform: scale(0);   opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ============================================================
+   Utility Classes
+   ============================================================ */
+
+/* Rainbow gradient border + glow — from demo .top-banner */
+.rainbow-border {
+  background: linear-gradient(
+    90deg,
+    #ff0000, #ff7300, #fffb00, #48ff00,
+    #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000
+  );
+  background-size: 300% 100%;
+  border: 4px ridge var(--neon-yellow);
+  box-shadow:
+    0 0 30px var(--neon-pink),
+    0 0 60px var(--neon-cyan),
+    inset 0 0 30px var(--neon-yellow);
+  border-radius: 8px;
+}
+
+/* Neon text glow — from demo .top-banner h1 */
+.glow-text {
+  color: #fff;
+  text-shadow:
+    0 0 10px var(--neon-pink),
+    0 0 20px var(--neon-cyan),
+    0 0 40px var(--neon-yellow),
+    3px 3px 0 var(--neon-red),
+    -3px -3px 0 var(--neon-blue);
+  letter-spacing: 8px;
+}
+
+/* Neon box (border + glow) — from demo .marquee-wrap */
+.neon-box {
+  background: #000;
+  border: 3px double var(--neon-green);
+  box-shadow: var(--glow-green);
+  padding: 6px 0;
+}
+
+/* Neon box — pink variant */
+.neon-box--pink {
+  border-color: var(--neon-pink);
+  box-shadow: var(--glow-pink);
+}
+
+/* Neon box — yellow variant */
+.neon-box--red {
+  border-color: var(--neon-red);
+  box-shadow: var(--glow-red);
+}
+
+/* ── Responsive breakpoint ───────────────────────────── */
+@media (max-width: 768px) {
+  .rainbow-border {
+    border-width: 2px;
+    box-shadow:
+      0 0 15px var(--neon-pink),
+      0 0 30px var(--neon-cyan),
+      inset 0 0 15px var(--neon-yellow);
+  }
+
+  .glow-text {
+    letter-spacing: 4px;
+    text-shadow:
+      0 0 5px var(--neon-pink),
+      0 0 10px var(--neon-cyan),
+      0 0 20px var(--neon-yellow),
+      2px 2px 0 var(--neon-red),
+      -2px -2px 0 var(--neon-blue);
+  }
+
+  .neon-box {
+    padding: 4px 0;
+  }
+}

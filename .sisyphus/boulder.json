@@ -1,0 +1,167 @@
+{
+  "active_plan": "D:\\Workplace\\projects\\gm_site\\.sisyphus\\plans\\gm_site.md",
+  "started_at": "2026-05-08T16:51:49.994Z",
+  "session_ids": [
+    "ses_1f79f7788ffeIzAulx0Cc5EBCL"
+  ],
+  "session_origins": {
+    "ses_1f79f7788ffeIzAulx0Cc5EBCL": "direct"
+  },
+  "plan_name": "gm_site",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "**Git 仓库初始化**",
+      "session_id": "ses_1f776a3f4ffeG4YJw3cwhuZHU4",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-08T17:07:27.420Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "**数据库连接 + 迁移运行器**",
+      "session_id": "ses_1f76f9ab9ffe7sEVnFvoc5GHgk",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-08T17:17:21.025Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "**User Repository**",
+      "session_id": "ses_1f767015cffek56xAs41P2k75b",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-08T17:21:03.817Z"
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "**Auth 中间件**",
+      "session_id": "ses_1f7627453ffecHUuHTDIv40UEw",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-08T17:25:18.902Z"
+    },
+    "todo:12": {
+      "task_key": "todo:12",
+      "task_label": "12",
+      "task_title": "**注册接口**",
+      "session_id": "ses_1f75dc2a4ffefTfHrxC2Vuz3Wq",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-08T17:35:18.268Z"
+    },
+    "todo:15": {
+      "task_key": "todo:15",
+      "task_label": "15",
+      "task_title": "**Album Repository + CRUD 接口**",
+      "session_id": "ses_1f735db0dfferbnbEiglI7APrP",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-08T18:15:44.606Z"
+    },
+    "todo:17": {
+      "task_key": "todo:17",
+      "task_label": "17",
+      "task_title": "**图片上传接口**",
+      "session_id": "ses_1f731fb55ffew1REuGb8V4rYK4",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-08T18:28:46.389Z"
+    },
+    "todo:18": {
+      "task_key": "todo:18",
+      "task_label": "18",
+      "task_title": "**图片 CRUD 接口（权限控制）**",
+      "session_id": "ses_1f5556b35ffeMFHta0J0gGkwmK",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-09T03:07:09.818Z"
+    },
+    "todo:21": {
+      "task_key": "todo:21",
+      "task_label": "21",
+      "task_title": "**WebSocket Hub + 客户端管理**",
+      "session_id": "ses_1f54aac8dffei0jq3qLoGyVccn",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-09T03:15:58.696Z"
+    },
+    "todo:22": {
+      "task_key": "todo:22",
+      "task_label": "22",
+      "task_title": "**在线统计追踪 + WebSocket 广播**",
+      "session_id": "ses_1f543714dffeTYzart9rvGpXj4",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T03:20:10.387Z"
+    },
+    "todo:27": {
+      "task_key": "todo:27",
+      "task_label": "27",
+      "task_title": "**图片卡片 + 画廊网格**",
+      "session_id": "ses_1f52d943affecgrnbjlDsTIGVE",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-05-09T03:44:52.406Z"
+    },
+    "todo:34": {
+      "task_key": "todo:34",
+      "task_label": "34",
+      "task_title": "**API 客户端 + Token 拦截器**",
+      "session_id": "ses_1f5250e97ffewhBxr5kQPLG0ND",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T03:51:21.319Z"
+    },
+    "todo:35": {
+      "task_key": "todo:35",
+      "task_label": "35",
+      "task_title": "**Auth Store (Pinia) + 路由守卫**",
+      "session_id": "ses_1f522673dffer07WyTDAuIuFY0",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T03:54:48.457Z"
+    },
+    "todo:36": {
+      "task_key": "todo:36",
+      "task_label": "36",
+      "task_title": "**登录/注册/待审核页面**",
+      "session_id": "ses_1f51ffe41ffePDUnz7JKpm9kW0",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-05-09T04:03:49.765Z"
+    },
+    "todo:38": {
+      "task_key": "todo:38",
+      "task_label": "38",
+      "task_title": "**管理员图片管理视图**",
+      "session_id": "ses_1f5178effffemegg03TbT3fXM8",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-05-09T04:19:02.332Z"
+    },
+    "todo:41": {
+      "task_key": "todo:41",
+      "task_label": "41",
+      "task_title": "**前端-后端联调 + CORS 配置**",
+      "session_id": "ses_1f50972ceffeNGS8IfSiImpwiv",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-09T04:25:22.845Z"
+    },
+    "todo:42": {
+      "task_key": "todo:42",
+      "task_label": "42",
+      "task_title": "**端到端流程测试**",
+      "session_id": "ses_1f4deafd7ffe0lQ0G0ZXJ7Zske",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T05:09:48.088Z"
+    }
+  }
+}

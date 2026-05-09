@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顾夏粉丝后援会 | 顾夏全球应援站 | GuXia Official Fan Club</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+    background:#0a0a0a;
+    color:#fff;
+    font-family:"Microsoft YaHei","SimHei","PingFang SC",sans-serif;
+    overflow-x:hidden;
+}
+
+/* ============ 粒子背景 ============ */
+#particles{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    pointer-events:none;z-index:0;
+}
+.star{
+    position:absolute;
+    animation:fall linear infinite;
+    pointer-events:none;
+    font-size:16px;
+    opacity:0.8;
+}
+@keyframes fall{
+    0%{transform:translateY(-100px) rotate(0deg);opacity:1;}
+    100%{transform:translateY(105vh) rotate(720deg);opacity:0;}
+}
+
+/* ============ 主容器 ============ */
+#container{
+    position:relative;z-index:1;
+    max-width:1100px;margin:0 auto;padding:10px;
+}
+
+/* ============ 顶部标题 ============ */
+.top-banner{
+    text-align:center;padding:20px 10px;margin:10px 0;
+    background:linear-gradient(90deg,#ff0000,#ff7300,#fffb00,#48ff00,#00ffd5,#002bff,#7a00ff,#ff00c8,#ff0000);
+    background-size:300% 100%;
+    animation:rainbow-bg 2s linear infinite;
+    border:4px ridge #ff0;
+    box-shadow:0 0 30px #f0f,0 0 60px #0ff,inset 0 0 30px #ff0;
+    border-radius:8px;
+}
+@keyframes rainbow-bg{
+    0%{background-position:0% 50%;}
+    100%{background-position:300% 50%;}
+}
+.top-banner h1{
+    font-size:clamp(28px,5vw,52px);
+    color:#fff;
+    text-shadow:0 0 10px #f0f,0 0 20px #0ff,0 0 40px #ff0,3px 3px 0 #f00,-3px -3px 0 #00f;
+    letter-spacing:8px;
+    animation:glitch 0.3s infinite;
+}
+@keyframes glitch{
+    0%,100%{transform:translate(0);}
+    20%{transform:translate(-3px,2px);}
+    40%{transform:translate(3px,-2px);}
+    60%{transform:translate(-2px,-3px);}
+    80%{transform:translate(2px,3px);}
+}
+.top-banner .subtitle{
+    font-size:18px;color:#ff0;
+    text-shadow:0 0 10px #f00,0 0 20px #ff0;
+    animation:blink 0.5s step-end infinite;
+}
+@keyframes blink{
+    0%,100%{opacity:1;}
+    50%{opacity:0;}
+}
+
+/* ============ 跑马灯 ============ */
+.marquee-wrap{
+    background:#000;border:3px double #0f0;
+    padding:6px 0;margin:8px 0;
+    box-shadow:0 0 15px #0f0;
+    overflow:hidden;
+}
+.marquee-wrap .marquee-content{
+    display:inline-block;
+    white-space:nowrap;
+    animation:marquee 12s linear infinite;
+    font-size:20px;font-weight:bold;
+    color:#0f0;
+    text-shadow:0 0 5px #0f0,0 0 15px #0f0;
+}
+.marquee-wrap.yellow .marquee-content{
+    color:#ff0;text-shadow:0 0 5px #ff0,0 0 15px #ff0;
+}
+.marquee-wrap.pink{
+    border-color:#f0f;box-shadow:0 0 15px #f0f;
+}
+.marquee-wrap.pink .marquee-content{
+    color:#f0f;text-shadow:0 0 5px #f0f,0 0 15px #f0f;
+}
+@keyframes marquee{
+    0%{transform:translateX(100%);}
+    100%{transform:translateX(-100%);}
+}
+
+/* ============ 内容布局 ============ */
+.main-content{
+    display:flex;gap:12px;margin:12px 0;flex-wrap:wrap;
+}
+.sidebar{
+    flex:0 0 200px;min-width:160px;
+}
+.main-area{
+    flex:1;min-width:300px;
+}
+
+/* ============ 导航菜单 ============ */
+.nav-menu{
+    background:linear-gradient(180deg,#1a0033,#33001a);
+    border:3px outset #f0f;
+    padding:0;
+    box-shadow:0 0 20px #f0f;
+    border-radius:4px;
+}
+.nav-menu .nav-title{
+    background:#f0f;color:#fff;text-align:center;
+    padding:8px;font-weight:bold;font-size:16px;
+    text-shadow:0 0 8px #fff;
+    animation:blink 1s step-end infinite;
+}
+.nav-menu a{
+    display:block;padding:10px 14px;color:#0f0;
+    text-decoration:none;border-bottom:1px dotted #f0f;
+    font-size:14px;transition:0.2s;
+    position:relative;
+}
+.nav-menu a:hover{
+    background:#f0f;color:#ff0;
+    text-shadow:0 0 10px #ff0;
+}
+.nav-menu a::before{
+    content:"▶ ";color:#ff0;animation:blink 0.8s step-end infinite;
+}
+.nav-menu a .new-badge{
+    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    background:red;color:#fff;font-size:10px;padding:2px 5px;
+    border-radius:2px;animation:blink 0.6s step-end infinite;
+}
+
+/* ============ 图片展示区 ============ */
+.gallery-section{
+    background:linear-gradient(135deg,#0a0015,#150025);
+    border:4px ridge #ff0;
+    padding:15px;
+    box-shadow:0 0 25px #ff0,inset 0 0 20px rgba(255,0,255,0.2);
+    border-radius:6px;
+}
+.gallery-section h2{
+    text-align:center;color:#ff0;font-size:26px;
+    text-shadow:0 0 10px #f00,0 0 20px #ff0;
+    margin-bottom:15px;
+    animation:blink 2s step-end infinite;
+    letter-spacing:6px;
+}
+.gallery-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:12px;
+}
+.gallery-card{
+    background:#111;border:3px solid #f0f;
+    border-radius:4px;overflow:hidden;
+    box-shadow:0 0 12px #f0f;
+    transition:0.3s;cursor:pointer;
+    position:relative;
+}
+.gallery-card:hover{
+    transform:scale(1.08);
+    box-shadow:0 0 30px #ff0,0 0 60px #f0f;
+    border-color:#ff0;
+    z-index:10;
+}
+.gallery-card img{
+    width:100%;height:220px;object-fit:cover;display:block;
+    background:linear-gradient(45deg,#330033,#003333);
+}
+.gallery-card .card-label{
+    text-align:center;padding:6px;font-size:12px;
+    background:#000;color:#0f0;
+    border-top:2px solid #f0f;
+}
+.gallery-card .card-label .hot-badge{
+    color:#f00;animation:blink 0.7s step-end infinite;
+}
+
+/* ============ 右侧广告栏 ============ */
+.ad-panel{
+    background:#000;
+    border:3px double #ff0000;
+    padding:10px;
+    box-shadow:0 0 15px #f00;
+    text-align:center;
+}
+.ad-panel h3{
+    color:#ff0;font-size:15px;
+    animation:blink 1.5s step-end infinite;
+    margin-bottom:8px;
+}
+.ad-panel .ad-item{
+    background:linear-gradient(180deg,#330000,#000);
+    border:2px solid #ff0;
+    padding:8px;margin:8px 0;
+    animation:pulse-border 1s infinite;
+}
+@keyframes pulse-border{
+    0%,100%{border-color:#ff0;box-shadow:0 0 8px #ff0;}
+    50%{border-color:#f00;box-shadow:0 0 20px #f00;}
+}
+.ad-panel .ad-item p{
+    color:#ff0;font-size:12px;margin:4px 0;
+}
+.ad-panel .ad-item .fake-btn{
+    display:inline-block;background:red;color:#fff;
+    padding:4px 16px;font-size:12px;font-weight:bold;
+    cursor:pointer;margin:4px 0;
+    animation:blink 0.8s step-end infinite;
+    border:2px outset #ff6666;
+}
+
+/* ============ 底部 ============ */
+.footer-area{
+    text-align:center;padding:15px;margin-top:10px;
+    background:#000;border:3px ridge #0f0;
+    box-shadow:0 0 15px #0f0;
+}
+.footer-area .counter{
+    font-size:22px;color:#ff0;
+    text-shadow:0 0 10px #ff0;
+    font-family:"Courier New",monospace;
+}
+.footer-area .counter span{
+    background:#111;color:#0f0;padding:2px 8px;
+    border:1px solid #0f0;margin:0 2px;
+    font-size:26px;
+}
+.footer-area .footer-links a{
+    color:#0f0;margin:0 10px;font-size:12px;
+    text-decoration:underline;
+}
+
+/* ============ 浮动弹窗 ============ */
+.float-popup{
+    position:fixed;z-index:999;
+    background:linear-gradient(180deg,#1a0000,#000);
+    border:3px ridge #ff0;
+    box-shadow:0 0 30px #f00,0 0 60px #ff0;
+    padding:0;width:280px;
+    animation:popup-bounce 0.5s ease-out;
+}
+@keyframes popup-bounce{
+    0%{transform:scale(0);opacity:0;}
+    60%{transform:scale(1.1);}
+    100%{transform:scale(1);opacity:1;}
+}
+.float-popup .popup-header{
+    background:linear-gradient(90deg,#f00,#ff0,#f00);
+    color:#fff;padding:8px;font-weight:bold;
+    text-align:center;font-size:14px;
+    cursor:move;
+    text-shadow:1px 1px 2px #000;
+}
+.float-popup .popup-body{
+    padding:12px;text-align:center;
+}
+.float-popup .popup-body p{
+    color:#ff0;font-size:13px;margin:8px 0;
+}
+.float-popup .popup-body .popup-btn{
+    display:inline-block;background:red;color:#fff;
+    padding:6px 20px;font-weight:bold;
+    cursor:pointer;margin:6px;
+    border:2px outset #ff6666;
+    animation:blink 1s step-end infinite;
+}
+.float-popup .popup-close{
+    position:absolute;top:4px;right:8px;
+    color:#fff;font-weight:bold;cursor:pointer;
+    font-size:18px;background:red;width:22px;height:22px;
+    text-align:center;line-height:22px;border-radius:2px;
+}
+.float-popup .popup-close:hover{background:#ff0;color:#000;}
+
+/* ============ 右下角悬浮按钮 ============ */
+.floating-buttons{
+    position:fixed;right:15px;bottom:30px;z-index:998;
+    display:flex;flex-direction:column;gap:8px;
+}
+.floating-buttons .float-btn{
+    width:60px;height:60px;border-radius:50%;
+    border:3px solid #ff0;
+    background:linear-gradient(135deg,#f00,#ff6600);
+    color:#fff;font-weight:bold;font-size:12px;
+    cursor:pointer;text-align:center;
+    box-shadow:0 0 20px #f00;
+    animation:bounce-btn 1.5s infinite;
+    display:flex;align-items:center;justify-content:center;
+    text-shadow:1px 1px 2px #000;
+}
+.floating-buttons .float-btn:nth-child(2){
+    animation-delay:0.5s;background:linear-gradient(135deg,#f0f,#6600ff);
+}
+.floating-buttons .float-btn:nth-child(3){
+    animation-delay:1s;background:linear-gradient(135deg,#00f,#0ff);
+}
+@keyframes bounce-btn{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-15px);}
+}
+
+/* ============ 顶部通知条 ============ */
+.top-notification{
+    background:#ff0;color:#000;text-align:center;
+    padding:4px;font-size:13px;font-weight:bold;
+    animation:blink 0.7s step-end infinite;
+    position:sticky;top:0;z-index:1000;
+    border-bottom:2px solid red;
+}
+
+/* ============ 响应式 ============ */
+@media(max-width:768px){
+    .main-content{flex-direction:column;}
+    .sidebar{flex:auto;}
+    .gallery-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}
+    .gallery-card img{height:160px;}
+    .float-popup{width:220px;font-size:11px;}
+}
+</style>
+</head>
+<body>
+
+<!-- 粒子背景 -->
+<div id="particles"></div>
+
+<!-- 顶部通知 -->
+<div class="top-notification">
+    草 顾夏应援站已他妈安全运行 <span id="safe-days" style="color:red;">2333</span> 天 | 当前在线傻逼：<span id="online-count" style="color:red;">666</span> 人 | 今天新增舔狗：<span id="new-members" style="color:red;">888</span> 人
+</div>
+
+<!-- 主容器 -->
+<div id="container">
+
+    <!-- 顶部Banner -->
+    <div class="top-banner">
+        <h1>顾 夏 牛 逼</h1>
+        <div class="subtitle">~ 顾夏全球舔狗聚集地 · 不爱顾夏的你他妈还是人吗 · 顾夏yyds ~</div>
+    </div>
+
+    <!-- 跑马灯1 -->
+    <div class="marquee-wrap">
+        <div class="marquee-content">
+            ★☆★ 草泥马欢迎来到顾夏全球后援会 GuXia Fan Club ★☆★ 每天更新顾夏那个逼的最新动态 ★☆★ 顾夏帅照·骚话·视频·表情包 ★☆★ 本站已他妈收录顾夏相关内容超过99999条 ★☆★ 点下面那破卡片看顾夏高清大图 ★☆★ 注册会员解锁顾夏私密内容 ★☆★ 新来的傻逼首月只要9块9 ★☆★
+        </div>
+    </div>
+
+    <!-- 主体 -->
+    <div class="main-content">
+
+        <!-- 左侧导航 -->
+        <div class="sidebar">
+            <div class="nav-menu">
+                <div class="nav-title">★ 操 导 航 ★</div>
+                <a href="#">顾夏最新逼动态<span class="new-badge">HOT</span></a>
+                <a href="#">顾夏帅得一逼<span class="new-badge">NEW</span></a>
+                <a href="#">顾夏那些骚话</a>
+                <a href="#">顾夏装逼视频</a>
+                <a href="#">顾夏表情包<span class="new-badge">HOT</span></a>
+                <a href="#">顾夏黑历史</a>
+                <a href="#">顾夏怎么火的</a>
+                <a href="#">顾夏的朋友圈</a>
+                <a href="#">舔狗投稿专区</a>
+                <a href="#">周边割韭菜</a>
+                <a href="#">线下逮顾夏</a>
+                <a href="#">VIP专属内容<span class="new-badge">VIP</span></a>
+            </div>
+
+            <!-- 左侧广告 -->
+            <div class="ad-panel" style="margin-top:12px;">
+                <h3>🔥 草 紧急通知 🔥</h3>
+                <div class="ad-item">
+                    <p>顾夏这个逼要开直播了！</p>
+                    <p style="color:#0f0;">赶紧他妈预约 >></p>
+                </div>
+                <div class="ad-item">
+                    <p>你附近有 3 个顾夏舔狗</p>
+                    <p style="color:#f0f;">去认识一下 >></p>
+                </div>
+                <div class="ad-item">
+                    <p>🎁 顾夏原味袜子抽奖！</p>
+                    <span class="fake-btn">赶紧参与</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间图片区 -->
+        <div class="main-area">
+            <div class="gallery-section">
+                <h2>▼ 顾 夏 装 逼 瞬 间 ▼</h2>
+                <div class="gallery-grid" id="galleryGrid">
+                    <!-- JS动态填充 -->
+                </div>
+                <div style="text-align:center;margin-top:15px;">
+                    <span class="fake-btn" style="font-size:16px;padding:8px 30px;" onclick="alert('你他妈先注册顾夏粉丝会员啊！')">
+                        点 击 看 更 多 顾 夏  ≫
+                    </span>
+                </div>
+            </div>
+
+            <!-- 跑马灯2 -->
+            <div class="marquee-wrap pink" style="margin-top:12px;">
+                <div class="marquee-content">
+                    ♥ 顾夏那个逼说过：人生就是干 ♥ 顾夏名言：不服来打我啊 ♥ 顾夏经典语录：你算老几 ♥ 关注本站获取顾夏每日骚操作 ♥
+                </div>
+            </div>
+
+            <!-- 跑马灯3 -->
+            <div class="marquee-wrap yellow" style="margin-top:8px;">
+                <div class="marquee-content">
+                    ⚠ 警告：不爱顾夏的请自行滚出本站 ⚠ 本站不欢迎黑粉 ⚠ 发现一个封一个 ⚠ 顾夏是你爹 ⚠ 记住没 ⚠
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧 -->
+        <div class="sidebar">
+            <div class="ad-panel">
+                <h3>📢 顾夏公告</h3>
+                <div class="ad-item">
+                    <p>顾夏粉丝站被评为一</p>
+                    <p style="color:#ff0;font-size:16px;">★★★★★</p>
+                    <p>全网最他妈牛逼后援会</p>
+                </div>
+                <div class="ad-item">
+                    <p>实时舔狗在线</p>
+                    <p style="font-size:24px;color:#0f0;" id="liveCounter">6666</p>
+                </div>
+                <div class="ad-item">
+                    <p>⚠ 安全检测</p>
+                    <p style="color:#0f0;">✅ 本站无毒放心</p>
+                    <p style="color:#0f0;">✅ 已通过360认证</p>
+                    <p style="color:#0f0;">✅ 顾夏亲自授权</p>
+                    <p style="color:#0f0;">✅ 爱信不信</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <div class="footer-area">
+        <div class="counter">
+            你是顾夏第 <span>1</span><span>3</span><span>3</span><span>7</span><span>6</span><span>6</span><span>6</span><span>6</span> 个舔狗
+        </div>
+        <div class="footer-links">
+            <a href="#">关于顾夏</a> |
+            <a href="#">广告合作</a> |
+            <a href="#">舔狗公约</a> |
+            <a href="#">免责声明</a> |
+            <a href="#">骂顾夏试试</a>
+        </div>
+        <p style="color:#666;font-size:11px;margin-top:8px;">Copyright &copy; 2026 GuXia Official Fan Club. All Rights Reserved. 顾夏后援会 版权所有 侵你妈权必究。</p>
+    </div>
+
+</div>
+
+<!-- 浮动弹窗1 -->
+<div class="float-popup" id="popup1" style="top:15%;left:5%;">
+    <div class="popup-header">🎉 草 你中奖了</div>
+    <span class="popup-close" onclick="closePopup('popup1')">×</span>
+    <div class="popup-body">
+        <p>牛逼！你是顾夏第 <b style="color:#ff0;">13376666</b> 个舔狗！</p>
+        <p style="color:#0f0;">🎁 获得顾夏亲笔签名内裤一条</p>
+        <span class="popup-btn" onclick="alert('先他妈注册啊傻逼！')">点击领取</span>
+    </div>
+</div>
+
+<!-- 浮动弹窗2 -->
+<div class="float-popup" id="popup2" style="top:45%;right:8%;">
+    <div class="popup-header">⚠ 顾夏温馨提示</div>
+    <span class="popup-close" onclick="closePopup('popup2')">×</span>
+    <div class="popup-body">
+        <p>顾夏说你浏览器该换了傻逼</p>
+        <p style="color:#f0f;">不换看不了顾夏最新装逼动态</p>
+        <span class="popup-btn" onclick="closePopup('popup2')">听顾夏的</span>
+        <span class="popup-btn" style="background:#666;" onclick="closePopup('popup2')">就不换咋地</span>
+    </div>
+</div>
+
+<!-- 浮动弹窗3 -->
+<div class="float-popup" id="popup3" style="top:60%;left:10%;">
+    <div class="popup-header">💬 顾夏私信</div>
+    <span class="popup-close" onclick="closePopup('popup3')">×</span>
+    <div class="popup-body">
+        <p>顾夏这个逼给你发了 <b style="color:#f00;">3</b> 条私信</p>
+        <p>内容：<b>在吗傻逼</b>、<b>干嘛呢</b>、<b>出来喝酒</b></p>
+        <span class="popup-btn" onclick="closePopup('popup3')">回复顾夏</span>
+    </div>
+</div>
+
+<!-- 右下角悬浮按钮 -->
+<div class="floating-buttons">
+    <div class="float-btn" onclick="alert('顾夏客服：顾夏现在不在，有事留言别他妈废话！')">客服</div>
+    <div class="float-btn" onclick="scrollToTop()">TOP</div>
+    <div class="float-btn" onclick="alert('先登录顾夏粉丝账号傻逼！')">VIP</div>
+</div>
+
+<script>
+// ============ 粒子背景 ============
+(function(){
+    const container = document.getElementById('particles');
+    const emojis = ['🔥','💪','👑','💩','🐂','🍺','⚡','💀','🤡','🎯'];
+    for(let i=0;i<40;i++){
+        const star = document.createElement('span');
+        star.className = 'star';
+        star.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+        star.style.left = Math.random()*100+'%';
+        star.style.animationDuration = (4+Math.random()*10)+'s';
+        star.style.animationDelay = Math.random()*8+'s';
+        star.style.fontSize = (10+Math.random()*20)+'px';
+        container.appendChild(star);
+    }
+})();
+
+// ============ 生成顾夏主题占位图 ============
+const galleryGrid = document.getElementById('galleryGrid');
+const cardLabels = [
+    '顾夏帅得一逼','顾夏霸气侧漏','顾夏指点江山','顾夏装逼现场',
+    '顾夏日常骚操作','顾夏经典瞬间','顾夏高光时刻','顾夏粉丝专属'
+];
+const cardColors = [
+    ['#1a0000','#330000'],['#001a00','#003300'],['#00001a','#000033'],
+    ['#1a001a','#330033'],['#001a1a','#003333'],['#1a1a00','#333300'],
+    ['#0d001a','#1a0033'],['#001a0d','#00331a']
+];
+
+function createGuXiaPlaceholder(index){
+    const [c1,c2] = cardColors[index];
+    const phrases = [
+        '顾夏yyds','格局打开','干就完了','顾夏牛逼',
+        '不服来战','顾夏是你爹','社会我夏哥','人狠话不多'
+    ];
+    return 'data:image/svg+xml,' + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+            <defs>
+                <linearGradient id="g${index}" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:${c1}"/>
+                    <stop offset="100%" style="stop-color:${c2}"/>
+                </linearGradient>
+            </defs>
+            <rect fill="url(#g${index})" width="300" height="300"/>
+            <rect x="10" y="10" width="280" height="280" fill="none" stroke="#ff0" stroke-width="2" opacity="0.5"/>
+            <text x="150" y="110" text-anchor="middle" fill="#ff0" font-size="60" font-family="sans-serif">🐂</text>
+            <text x="150" y="170" text-anchor="middle" fill="#fff" font-size="28" font-weight="bold" font-family="SimHei,sans-serif">顾 夏</text>
+            <text x="150" y="210" text-anchor="middle" fill="#0f0" font-size="16" font-family="SimHei,sans-serif">${phrases[index]}</text>
+            <text x="150" y="245" text-anchor="middle" fill="#f0f" font-size="12" font-family="SimHei,sans-serif">GuXia · Official</text>
+            <rect x="60" y="258" width="180" height="20" rx="3" fill="#f00" opacity="0.8"/>
+            <text x="150" y="273" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">VIP 专享高清大图</text>
+        </svg>`
+    );
+}
+
+// 创建卡片
+for(let i=0;i<8;i++){
+    const card = document.createElement('div');
+    card.className = 'gallery-card';
+    card.onclick = ()=>alert('你他妈先注册顾夏粉丝会员再看高清大图！');
+    card.innerHTML = `
+        <img src="${createGuXiaPlaceholder(i)}" alt="顾夏帅照" loading="lazy">
+        <div class="card-label">
+            <span class="hot-badge">🔥</span> ${cardLabels[i]}
+        </div>
+    `;
+    galleryGrid.appendChild(card);
+}
+
+// ============ 动态数据 ============
+setInterval(()=>{
+    document.getElementById('online-count').textContent = 600+Math.floor(Math.random()*200);
+    document.getElementById('new-members').textContent = 800+Math.floor(Math.random()*200);
+    document.getElementById('liveCounter').textContent = 6000+Math.floor(Math.random()*2000);
+    document.getElementById('safe-days').textContent = 2300+Math.floor(Math.random()*100);
+},3000);
+
+// ============ 弹窗 ============
+function closePopup(id){
+    const el = document.getElementById(id);
+    el.style.transition = '0.3s';
+    el.style.transform = 'scale(0)';
+    el.style.opacity = '0';
+    setTimeout(()=>{el.style.display = 'none';},300);
+    setTimeout(()=>{
+        el.style.display = 'block';
+        el.style.transform = 'scale(1)';
+        el.style.opacity = '1';
+    },5000+Math.random()*8000);
+}
+
+// 弹窗可拖拽
+document.querySelectorAll('.float-popup .popup-header').forEach(header=>{
+    header.addEventListener('mousedown',function(e){
+        const popup = this.parentElement;
+        const rect = popup.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+        function onMove(ev){
+            popup.style.left = (ev.clientX - offsetX)+'px';
+            popup.style.top = (ev.clientY - offsetY)+'px';
+            popup.style.right = 'auto';
+            popup.style.bottom = 'auto';
+        }
+        function onUp(){
+            document.removeEventListener('mousemove',onMove);
+            document.removeEventListener('mouseup',onUp);
+        }
+        document.addEventListener('mousemove',onMove);
+        document.addEventListener('mouseup',onUp);
+    });
+});
+
+// ============ 弹窗随机位置 ============
+setTimeout(()=>{
+    document.querySelectorAll('.float-popup').forEach(p=>{
+        const maxX = window.innerWidth - 300;
+        const maxY = window.innerHeight - 250;
+        p.style.left = (50+Math.random()*(maxX-50))+'px';
+        p.style.top = (80+Math.random()*(maxY-80))+'px';
+        p.style.right = 'auto';
+    });
+},1000);
+
+// ============ 回到顶部 ============
+function scrollToTop(){
+    window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,60 @@
+# === Go ===
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.test.exe
+/vendor/
+/go.work
+/go.work.sum
+/bin/
+/tmp/
+
+# === SQLite ===
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# === Node / Vue ===
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+.cache/
+
+# === Environment ===
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Logs ===
+*.log
+/logs/
+/log/
+
+# === Misc ===
+*.bak
+*.tmp
