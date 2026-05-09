@@ -2,6 +2,9 @@
 
 赛博朋克风格的群友图片展示网站，支持用户注册登录、图片上传至兰空图床、可拖拽弹窗浏览、实时数据展示。
 
+> ⚠️ **声明**：本项目由 AI（OpenCode + Claude/DeepSeek）全自动生成，包括前后端代码、数据库设计、测试用例及文档。人工仅提供需求描述和配置调整。
+> 🤖 AI-Generated | 🛠 Go + Vue 3 + SQLite | 📡 Lsky Pro | 🔐 JWT 双Token
+
 ## 技术栈
 
 - **后端**: Go + Echo v4 + SQLite（modernc.org/sqlite，纯 Go 无 CGO 依赖）
@@ -419,3 +422,15 @@ npm run build
 ```
 
 确保 Node.js 版本 >= 18。
+
+---
+
+## 关于本项目
+
+本项目为 **AI 全自动生成** 的全栈项目，从需求分析 → 架构设计 → 代码实现 → 测试编写 → 部署文档，全部由 AI 完成。
+
+- **AI 模型**: Claude (Anthropic) + DeepSeek
+- **AI 工作流**: OpenCode + Sisyphus 多智能体协作系统
+- **人工参与**: 需求描述、配置填写、代码审查
+
+如有问题或建议，欢迎提 Issue。
