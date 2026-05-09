@@ -55,6 +55,13 @@ desktop.ini
 /logs/
 /log/
 
+# === Tooling ===
+.playwright-mcp/
+.sisyphus/evidence/
+.sisyphus/notepads/
+.sisyphus/drafts/
+.sisyphus/run-continuation/
+
 # === Misc ===
 *.bak
 *.tmp
