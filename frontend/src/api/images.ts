@@ -20,6 +20,7 @@ export interface ImageData {
 
 export interface ImageListParams {
   page?: number
+  limit?: number
   page_size?: number
   album_id?: number
   sort?: string

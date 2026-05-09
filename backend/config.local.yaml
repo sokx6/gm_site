@@ -65,8 +65,3 @@ site:
 upload:
   # 单张图片上传大小限制（单位: MB）
   max_size_mb: 10
-
-cors:
-  # 允许的跨域来源（逗号分隔），留空默认 http://localhost:5173
-  # 生产环境请填写前端部署地址，如 https://your-frontend-domain.com
-  allowed_origins: "http://localhost:5173"

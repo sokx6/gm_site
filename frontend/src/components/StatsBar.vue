@@ -13,7 +13,9 @@ let destroyed = false
 function connect() {
   if (destroyed) return
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const url = `${protocol}//${location.host}/ws`
+  const url = import.meta.env.VITE_WS_URL 
+    ? `${import.meta.env.VITE_WS_URL}/api/ws` 
+    : `${protocol}//${location.host}/api/ws`
 
   ws = new WebSocket(url)
 

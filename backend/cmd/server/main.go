@@ -96,7 +96,7 @@ func main() {
 	e := echo.New()
 
 	// CORS 中间件
-	e.Use(middleware.CORS())
+	e.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
 
 	// 访客统计中间件（跳过健康检查）
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {

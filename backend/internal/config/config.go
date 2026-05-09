@@ -19,6 +19,7 @@ type Config struct {
 	Admin    AdminConfig    `mapstructure:"admin"`
 	Site     SiteConfig     `mapstructure:"site"`
 	Upload   UploadConfig   `mapstructure:"upload"`
+	CORS     CORSConfig     `mapstructure:"cors"`
 }
 
 // ServerConfig 服务器配置
@@ -73,6 +74,11 @@ type SiteConfig struct {
 // UploadConfig 文件上传配置
 type UploadConfig struct {
 	MaxSizeMB int `mapstructure:"max_size_mb"`
+}
+
+// CORSConfig 跨域配置
+type CORSConfig struct {
+	AllowedOrigins string `mapstructure:"allowed_origins"`
 }
 
 // LoadConfig 从 YAML 文件加载配置，支持环境变量覆盖
@@ -144,4 +150,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("site.name", "顾夏")
 
 	v.SetDefault("upload.max_size_mb", 10)
+
+	v.SetDefault("cors.allowed_origins", "http://localhost:5173")
 }

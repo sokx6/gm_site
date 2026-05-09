@@ -75,7 +75,7 @@ async function fetchImages(reset = false) {
   try {
     const params: Record<string, unknown> = {
       page: currentPage.value,
-      page_size: pageSize,
+      limit: pageSize,
     }
     if (currentAlbumId.value) {
       params.album_id = currentAlbumId.value
@@ -85,19 +85,21 @@ async function fetchImages(reset = false) {
     if (currentQuery.value) {
       res = await searchImages(currentQuery.value, {
         page: currentPage.value,
-        page_size: pageSize,
+        limit: pageSize,
         ...(currentAlbumId.value ? { album_id: currentAlbumId.value } : {}),
       })
     } else {
       res = await getImages({
         page: currentPage.value,
-        page_size: pageSize,
+        limit: pageSize,
         ...(currentAlbumId.value ? { album_id: currentAlbumId.value } : {}),
       })
     }
 
     const pageData = res.data
-    const mapped = pageData.data.map(mapImage)
+    // API returns { list: [...] } for getImages, { images: [...] } for searchImages
+    const items = (pageData as any).list || (pageData as any).images || []
+    const mapped = items.map(mapImage)
 
     if (reset) {
       images.value = mapped
@@ -105,7 +107,8 @@ async function fetchImages(reset = false) {
       images.value.push(...mapped)
     }
 
-    hasMore.value = pageData.page < pageData.total_pages
+    const totalPages = Math.ceil((pageData as any).total / pageSize) || 0
+    hasMore.value = (pageData as any).page < totalPages
 
     if (currentQuery.value && mapped.length === 0 && reset) {
       searchNoResults.value = true

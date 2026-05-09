@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const apiClient = axios.create({ baseURL: '/api' })
+const apiClient = axios.create({ 
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/' 
+})
 
 // Request interceptor: attach access token
 apiClient.interceptors.request.use(config => {

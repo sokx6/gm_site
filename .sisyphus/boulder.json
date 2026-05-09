@@ -2,10 +2,18 @@
   "active_plan": "D:\\Workplace\\projects\\gm_site\\.sisyphus\\plans\\gm_site.md",
   "started_at": "2026-05-08T16:51:49.994Z",
   "session_ids": [
-    "ses_1f79f7788ffeIzAulx0Cc5EBCL"
+    "ses_1f79f7788ffeIzAulx0Cc5EBCL",
+    "ses_1f4d9d17dffe5WlphuxQnanEM7",
+    "ses_1f4d9b176ffeyzXNSuDCoV68kN",
+    "ses_1f4d989e1ffeq4uCGZa4mHltEf",
+    "ses_1f4d96d0fffeg7jDUnnVg3bM2Y"
   ],
   "session_origins": {
-    "ses_1f79f7788ffeIzAulx0Cc5EBCL": "direct"
+    "ses_1f79f7788ffeIzAulx0Cc5EBCL": "direct",
+    "ses_1f4d9d17dffe5WlphuxQnanEM7": "appended",
+    "ses_1f4d9b176ffeyzXNSuDCoV68kN": "appended",
+    "ses_1f4d989e1ffeq4uCGZa4mHltEf": "appended",
+    "ses_1f4d96d0fffeg7jDUnnVg3bM2Y": "appended"
   },
   "plan_name": "gm_site",
   "agent": "atlas",
@@ -162,6 +170,24 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "updated_at": "2026-05-09T05:09:48.088Z"
+    },
+    "todo:43": {
+      "task_key": "todo:43",
+      "task_label": "43",
+      "task_title": "**Git 初始提交**",
+      "session_id": "ses_1f4db6884ffezOzSJlW6xFEmP1",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T05:11:20.717Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "ses_1f4d96d0fffeg7jDUnnVg3bM2Y",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-09T05:33:25.067Z"
     }
   }
 }
