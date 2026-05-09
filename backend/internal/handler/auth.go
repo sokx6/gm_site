@@ -129,13 +129,17 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		role = model.UserRoleAdmin
 	}
 
-	// Create user with pending status
+	// Create user: admin auto-approved, others pending
+	status := model.UserStatusPending
+	if role == model.UserRoleAdmin {
+		status = model.UserStatusApproved
+	}
 	user := &model.User{
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
 		Nickname:     req.Nickname,
 		Role:         role,
-		Status:       model.UserStatusPending,
+		Status:       status,
 	}
 
 	if err := h.userRepo.Create(user); err != nil {
@@ -145,8 +149,12 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	// Asynchronously notify admin
 	go h.emailSvc.SendAdminNotification(req.Email, req.Nickname)
 
+	msg := "注册成功，请等待管理员审核"
+	if role == model.UserRoleAdmin {
+		msg = "注册成功"
+	}
 	return Created(c, map[string]string{
-		"message": "注册成功，请等待管理员审核",
+		"message": msg,
 	})
 }
 
