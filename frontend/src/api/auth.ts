@@ -63,6 +63,11 @@ export async function refreshToken() {
   return res.data
 }
 
+export async function getMe() {
+  const res = await apiClient.get('/api/auth/me')
+  return res.data
+}
+
 export function logout() {
   localStorage.removeItem('accessToken')
   localStorage.removeItem('refreshToken')

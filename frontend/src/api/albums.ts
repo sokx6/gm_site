@@ -7,6 +7,7 @@ export interface AlbumData {
   cover_url: string
   user_id: number
   image_count: number
+  privacy?: string
   created_at: string
   updated_at: string
 }

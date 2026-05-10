@@ -4,16 +4,15 @@ export interface ImageData {
   id: number
   title: string
   description: string
-  url: string
-  thumbnail_url: string
-  album_id: number
-  user_id: number
-  width: number
-  height: number
-  file_size: number
-  mime_type: string
-  tags: string[]
-  exif: Record<string, unknown>
+  url?: string
+  lsky_url: string
+  thumbnail_url?: string
+  album_id: number | null
+  user_id?: number
+  uploaded_by: number
+  uploader_name?: string
+  tags?: string[]
+  privacy?: string
   created_at: string
   updated_at: string
 }
@@ -28,10 +27,10 @@ export interface ImageListParams {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[]
+  list: T[]
   total: number
   page: number
-  page_size: number
+  limit: number
   total_pages: number
 }
 
@@ -48,6 +47,7 @@ export interface UpdateImageData {
   description?: string
   album_id?: number
   tags?: string[]
+  privacy?: string
 }
 
 export async function uploadImage(formData: FormData) {
@@ -74,6 +74,11 @@ export async function updateImage(id: number, data: UpdateImageData) {
 
 export async function deleteImage(id: number) {
   const res = await apiClient.delete<{ message: string }>(`/api/images/${id}`)
+  return res.data
+}
+
+export async function updateImagePrivacy(id: number, privacy: string) {
+  const res = await apiClient.put<ImageResponse>(`/api/images/${id}/privacy`, { privacy })
   return res.data
 }
 

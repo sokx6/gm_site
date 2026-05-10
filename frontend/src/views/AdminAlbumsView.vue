@@ -148,6 +148,15 @@ async function handleDelete(id: number) {
 function formatDate(d: string): string {
   return new Date(d).toLocaleDateString('zh-CN')
 }
+
+const privacyLabels: Record<string, string> = {
+  public: '公开',
+  friends: '好友可见',
+  private: '私密',
+}
+function privacyLabel(p: string | undefined): string {
+  return p ? privacyLabels[p] ?? p : '公开'
+}
 </script>
 
 <template>
@@ -244,7 +253,10 @@ function formatDate(d: string): string {
                 </span>
               </div>
               <p v-if="album.description" class="album-desc">{{ album.description }}</p>
-              <p class="album-meta">创建于 {{ formatDate(album.created_at) }}</p>
+              <div class="album-meta-row">
+                <p class="album-meta">创建于 {{ formatDate(album.created_at) }}</p>
+                <span class="album-privacy-badge">{{ privacyLabel(album.privacy) }}</span>
+              </div>
             </div>
             <div class="album-actions">
               <button class="action-btn action-btn--edit" @click="startEdit(album)">编辑</button>
@@ -620,6 +632,22 @@ function formatDate(d: string): string {
   font-size: 11px;
   color: #555;
   margin: 0;
+}
+
+.album-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.album-privacy-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 6px rgba(0, 255, 255, 0.12);
 }
 
 .album-actions {

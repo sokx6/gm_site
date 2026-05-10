@@ -91,6 +91,8 @@ func setupImageHandlerDB(t *testing.T) (*sql.DB, func()) {
 			name TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
 			created_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
+			is_friend_album INTEGER DEFAULT 0,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE TABLE images (
@@ -102,6 +104,7 @@ func setupImageHandlerDB(t *testing.T) (*sql.DB, func()) {
 			lsky_url TEXT NOT NULL,
 			thumbnail_url TEXT NOT NULL DEFAULT '',
 			uploaded_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
@@ -111,6 +114,13 @@ func setupImageHandlerDB(t *testing.T) (*sql.DB, func()) {
 			user_id INTEGER NOT NULL REFERENCES users(id),
 			content TEXT NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE TABLE IF NOT EXISTS friends (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES users(id),
+			friend_id INTEGER NOT NULL REFERENCES users(id),
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(user_id, friend_id)
 		);
 	`)
 	require.NoError(t, err, "failed to create tables")
@@ -168,9 +178,9 @@ func setupImageTest(t *testing.T, maxSizeMB int) (*echo.Echo, *ImageHandler, *sq
 
 	e := echo.New()
 
-	// Public routes
-	e.GET("/api/images/search", handler.SearchImages)
-	e.GET("/api/images", handler.ListImages)
+	// Public routes with optional auth
+	e.GET("/api/images/search", handler.SearchImages, middleware.OptionalAuth(jwtSvc))
+	e.GET("/api/images", handler.ListImages, middleware.OptionalAuth(jwtSvc))
 	e.GET("/api/images/:id", handler.GetImage)
 
 	// Authenticated routes

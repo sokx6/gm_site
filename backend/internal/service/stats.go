@@ -3,8 +3,9 @@ package service
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"time"
+
+	"gm_site/internal/logger"
 )
 
 // HubBroadcaster defines the interface for broadcasting stats to connected clients.
@@ -84,13 +85,13 @@ func (s *StatsService) BroadcastStats() {
 
 	visitors, err := s.GetVisitorCount()
 	if err != nil {
-		log.Printf("[StatsService] GetVisitorCount error: %v", err)
+		logger.L.Error("stats GetVisitorCount failed", "err", err)
 		visitors = 0
 	}
 
 	newMembers, err := s.GetNewMembersCount()
 	if err != nil {
-		log.Printf("[StatsService] GetNewMembersCount error: %v", err)
+		logger.L.Error("stats GetNewMembersCount failed", "err", err)
 		newMembers = 0
 	}
 
@@ -108,7 +109,7 @@ func (s *StatsService) BroadcastStats() {
 
 	data, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("[StatsService] json.Marshal error: %v", err)
+		logger.L.Error("stats broadcast failed", "err", err)
 		return
 	}
 

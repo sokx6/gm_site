@@ -1,10 +1,19 @@
 package service
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 	"testing"
+
+	"gm_site/internal/logger"
 )
+
+// TestMain initializes the global logger for service tests.
+func TestMain(m *testing.M) {
+	logger.L = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	os.Exit(m.Run())
+}
 
 // compile-time interface implementation check
 var _ EmailService = (*MockEmailService)(nil)

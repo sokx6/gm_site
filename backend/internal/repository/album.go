@@ -46,11 +46,24 @@ func (r *AlbumRepository) Create(album *model.Album) error {
 }
 
 // FindAll retrieves all albums ordered by created_at descending (most recent first).
-func (r *AlbumRepository) FindAll() ([]model.Album, error) {
-	rows, err := r.db.Query(
-		`SELECT id, name, description, created_by, created_at
-		 FROM albums ORDER BY created_at DESC`,
-	)
+// viewerID is 0 for guests; isAdmin bypasses privacy checks.
+func (r *AlbumRepository) FindAll(viewerID int64, isAdmin bool) ([]model.Album, error) {
+	whereClause := ""
+	var args []interface{}
+
+	if !isAdmin {
+		if viewerID == 0 {
+			whereClause = " WHERE a.privacy = 'public'"
+		} else {
+			whereClause = " WHERE (a.privacy = 'public' OR (a.privacy = 'friends' AND EXISTS(SELECT 1 FROM friends WHERE user_id = ? AND friend_id = a.created_by)) OR a.created_by = ?)"
+			args = append(args, viewerID, viewerID)
+		}
+	}
+
+	query := `SELECT a.id, a.name, a.description, a.created_by, a.created_at, a.privacy, a.is_friend_album
+		 FROM albums a` + whereClause + ` ORDER BY a.created_at DESC`
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("repository: find all albums failed: %w", err)
 	}
@@ -59,7 +72,7 @@ func (r *AlbumRepository) FindAll() ([]model.Album, error) {
 	var albums []model.Album
 	for rows.Next() {
 		var a model.Album
-		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.CreatedBy, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.CreatedBy, &a.CreatedAt, &a.Privacy, &a.IsFriendAlbum); err != nil {
 			return nil, fmt.Errorf("repository: scan album failed: %w", err)
 		}
 		albums = append(albums, a)
@@ -98,6 +111,27 @@ func (r *AlbumRepository) Update(album *model.Album) error {
 	)
 	if err != nil {
 		return fmt.Errorf("repository: update album failed: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repository: rows affected failed: %w", err)
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// UpdatePrivacy updates the privacy setting of an album.
+// Returns sql.ErrNoRows if the album does not exist.
+func (r *AlbumRepository) UpdatePrivacy(id int64, privacy string) error {
+	result, err := r.db.Exec(
+		`UPDATE albums SET privacy = ? WHERE id = ?`,
+		privacy, id,
+	)
+	if err != nil {
+		return fmt.Errorf("repository: update album privacy failed: %w", err)
 	}
 
 	rows, err := result.RowsAffected()

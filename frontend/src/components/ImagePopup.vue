@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, computed, onUnmounted } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
+import CommentSection from '@/components/CommentSection.vue'
 
 // ── Image data model (mirrors GalleryCard.vue) ────────
 interface Image {
@@ -8,14 +9,25 @@ interface Image {
   lsky_url: string
   tags: string[]
   uploaded_by: number
+  uploader_name: string
   created_at: string
 }
 
 // ── Props & Emits ─────────────────────────────────────
-const props = defineProps<{
-  image: Image
-  visible: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    image: Image
+    visible: boolean
+    isLoggedIn?: boolean
+    currentUserId?: number
+    isAdmin?: boolean
+  }>(),
+  {
+    isLoggedIn: false,
+    currentUserId: 0,
+    isAdmin: false,
+  }
+)
 
 const emit = defineEmits<{
   close: []
@@ -27,8 +39,10 @@ const closing = ref(false)
 const opening = ref(false)
 const firstOpen = ref(true)
 
-let reappearTimer: ReturnType<typeof setTimeout> | null = null
 let imgLoadError = ref(false)
+
+// ── Template ref for self-reference ────────────────────
+const popupRef = ref<HTMLElement | null>(null)
 
 // ── Position / drag state ─────────────────────────────
 const popupLeft = ref(0)
@@ -58,24 +72,18 @@ watch(
           opening.value = false
         }, 500)
       })
+      // Clamp popup position to viewport after DOM has updated
+      nextTick(() => clampPosition())
     } else {
       closing.value = true
       setTimeout(() => {
         showPopup.value = false
         closing.value = false
-        scheduleReappear()
       }, 300)
     }
   },
   { immediate: true }
 )
-
-// Cleanup timer on unmount
-onUnmounted(() => {
-  if (reappearTimer) clearTimeout(reappearTimer)
-  document.removeEventListener('mousemove', onMouseMove)
-  document.removeEventListener('mouseup', onMouseUp)
-})
 
 // ── Format helpers ────────────────────────────────────
 function formatDate(iso: string): string {
@@ -117,12 +125,14 @@ function randomPosition(): void {
     padding + Math.random() * (window.innerWidth - estimatedW - padding * 2)
   popupTop.value =
     padding + Math.random() * (window.innerHeight - estimatedH - padding * 2)
+
+  clampPosition()
 }
 
 // ── Clamp position to viewport ────────────────────────
 function clampPosition(): void {
   // Read actual popup dimensions from DOM
-  const el = document.querySelector('.image-popup') as HTMLElement | null
+  const el = popupRef.value
   if (!el) return
 
   const pw = el.offsetWidth
@@ -140,58 +150,39 @@ function onMouseDown(e: MouseEvent): void {
   const target = e.target as HTMLElement
   if (!target.closest('.popup-header')) return
 
+  e.preventDefault()
+
   isDragging.value = true
   dragStartX.value = e.clientX
   dragStartY.value = e.clientY
   popupStartLeft.value = popupLeft.value
   popupStartTop.value = popupTop.value
 
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
+  const onMove = (ev: MouseEvent) => {
+    if (!isDragging.value) return
+    popupLeft.value = popupStartLeft.value + (ev.clientX - dragStartX.value)
+    popupTop.value = popupStartTop.value + (ev.clientY - dragStartY.value)
+    clampPosition()
+  }
+
+  const onUp = () => {
+    isDragging.value = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 }
 
-function onMouseMove(e: MouseEvent): void {
-  if (!isDragging.value) return
-
-  const dx = e.clientX - dragStartX.value
-  const dy = e.clientY - dragStartY.value
-
-  popupLeft.value = popupStartLeft.value + dx
-  popupTop.value = popupStartTop.value + dy
-
-  // Clamp after moving
-  clampPosition()
-}
-
-function onMouseUp(): void {
-  isDragging.value = false
-  document.removeEventListener('mousemove', onMouseMove)
-  document.removeEventListener('mouseup', onMouseUp)
-}
-
-// ── Close & auto-reappear ─────────────────────────────
+// ── Close ─────────────────────────────────────────────
 function handleClose(): void {
   closing.value = true
   setTimeout(() => {
     showPopup.value = false
     closing.value = false
     emit('close')
-    scheduleReappear()
   }, 300)
-}
-
-function scheduleReappear(): void {
-  if (reappearTimer) clearTimeout(reappearTimer)
-  const delay = 5000 + Math.random() * 8000 // 5-13s
-  reappearTimer = setTimeout(() => {
-    showPopup.value = true
-    requestAnimationFrame(() => {
-      opening.value = true
-      setTimeout(() => {
-        opening.value = false
-      }, 500)
-    })
-  }, delay)
 }
 
 // ── Computed popup style ──────────────────────────────
@@ -203,6 +194,7 @@ const popupStyle = computed(() => ({
 
 <template>
   <div
+    ref="popupRef"
     v-show="showPopup"
     class="image-popup"
     :class="{
@@ -251,13 +243,22 @@ const popupStyle = computed(() => ({
         </div>
 
         <div class="popup-info">
-          <span class="popup-uploader">
-            👤 上传者: User#{{ props.image.uploaded_by }}
-          </span>
+<span class="popup-uploader">
+👤 上传者: {{ props.image.uploader_name || 'User#' + props.image.uploaded_by }}
+</span>
           <span class="popup-date">
             📅 {{ formatDate(props.image.created_at) }}
           </span>
         </div>
+      </div>
+
+      <div class="popup-comments" @click.stop>
+        <CommentSection
+          :image-id="props.image.id"
+          :is-logged-in="props.isLoggedIn"
+          :current-user-id="props.currentUserId"
+          :is-admin="props.isAdmin"
+        />
       </div>
     </div>
   </div>
@@ -344,6 +345,8 @@ const popupStyle = computed(() => ({
 
 /* ── Body ───────────────────────────────────────────── */
 .popup-body {
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
   padding: 16px;
 }
 
@@ -425,6 +428,15 @@ const popupStyle = computed(() => ({
 
 .popup-date {
   color: #888;
+}
+
+/* ── Comment section ────────────────────────────────── */
+.popup-comments {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ── Open keyframe ──────────────────────────────────── */

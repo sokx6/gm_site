@@ -40,6 +40,7 @@ func setupCommentTestDB(t *testing.T) (*sql.DB, func()) {
 			lsky_url TEXT NOT NULL,
 			thumbnail_url TEXT NOT NULL DEFAULT '',
 			uploaded_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
@@ -51,6 +52,17 @@ func setupCommentTestDB(t *testing.T) (*sql.DB, func()) {
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE INDEX idx_comments_image_id ON comments(image_id);
+		CREATE TABLE notifications (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES users(id),
+			type TEXT NOT NULL,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL,
+			related_id INTEGER,
+			image_id INTEGER,
+			is_read INTEGER DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
 	`)
 	require.NoError(t, err, "failed to create additional tables")
 
@@ -110,8 +122,12 @@ func setupCommentTest(t *testing.T) (*echo.Echo, *CommentHandler, *sql.DB, *serv
 
 	db, teardown := setupCommentTestDB(t)
 	commentRepo := repository.NewCommentRepository(db)
+	imageRepo := repository.NewImageRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
+	emailSvc := service.NewMockEmailService()
 	jwtSvc := newTestJWTService()
-	handler := NewCommentHandler(commentRepo, db)
+	handler := NewCommentHandler(commentRepo, imageRepo, userRepo, notificationRepo, emailSvc, db)
 
 	e := echo.New()
 	// Public route

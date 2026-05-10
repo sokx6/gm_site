@@ -13,11 +13,15 @@ const totalPages = ref(0)
 const total = ref(0)
 const pageSize = 20
 
+// User email filter
+const userEmailFilter = ref('')
+
 // Editing state
 const editingId = ref<number | null>(null)
 const editTitle = ref('')
 const editTags = ref('')
 const editAlbumId = ref<number | null>(null)
+const editPrivacy = ref('public')
 const savingEdit = ref(false)
 const editError = ref('')
 
@@ -25,15 +29,27 @@ const editError = ref('')
 const deletingId = ref<number | null>(null)
 const deleting = ref(false)
 
+// ── Computed: client-side filtering ──
+const filteredImages = computed(() => {
+  const q = userEmailFilter.value.trim().toLowerCase()
+  if (!q) return images.value
+  return images.value.filter(img => {
+    const name = (img.uploader_name || '').toLowerCase()
+    const uid = String(img.uploaded_by)
+    return name.includes(q) || uid.includes(q)
+  })
+})
+
 // ── Fetch ──
 async function fetchImages() {
   loading.value = true
   error.value = ''
   try {
-    const res = await getImages({ page: currentPage.value, page_size: pageSize })
-    images.value = res.data.data
+    const params: Record<string, any> = { page: currentPage.value, page_size: pageSize }
+    const res = await getImages(params)
+    images.value = res.data.list
     total.value = res.data.total
-    totalPages.value = res.data.total_pages
+    totalPages.value = Math.ceil(res.data.total / pageSize)
   } catch (e: any) {
     error.value = e?.response?.data?.message || '加载图片列表失败'
   } finally {
@@ -77,12 +93,23 @@ function albumName(id: number | null): string {
   return a ? a.name : `#${id}`
 }
 
+// ── Privacy label ──
+const privacyLabels: Record<string, string> = {
+  public: '公开',
+  friends: '好友可见',
+  private: '私密',
+}
+function privacyLabel(p: string | undefined): string {
+  return p ? privacyLabels[p] ?? p : '公开'
+}
+
 // ── Edit ──
 function startEdit(img: ImageData) {
   editingId.value = img.id
   editTitle.value = img.title
   editTags.value = (img.tags ?? []).join(', ')
   editAlbumId.value = img.album_id
+  editPrivacy.value = img.privacy ?? 'public'
   editError.value = ''
 }
 
@@ -103,6 +130,7 @@ async function saveEdit(id: number) {
       title: editTitle.value,
       tags,
       album_id: editAlbumId.value ?? undefined,
+      privacy: editPrivacy.value,
     })
     // Update local state
     const idx = images.value.findIndex(i => i.id === id)
@@ -112,6 +140,7 @@ async function saveEdit(id: number) {
         title: editTitle.value,
         tags,
         album_id: editAlbumId.value ?? images.value[idx].album_id,
+        privacy: editPrivacy.value,
       }
     }
     editingId.value = null
@@ -145,9 +174,10 @@ async function doDelete(id: number) {
   }
 }
 
-// ── Format user ID ──
-function userLabel(userId: number): string {
-  return `UID:${userId}`
+// ── Format user display ──
+function userLabel(img: ImageData): string {
+  if (img.uploader_name) return img.uploader_name
+  return `UID:${img.uploaded_by}`
 }
 </script>
 
@@ -167,6 +197,19 @@ function userLabel(userId: number): string {
       <button class="dismiss-btn" @click="error = ''">×</button>
     </div>
 
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <input
+        v-model="userEmailFilter"
+        class="filter-input"
+        type="text"
+        placeholder="按上传者邮箱/昵称筛选..."
+      />
+      <span v-if="userEmailFilter" class="filter-count">
+        筛选结果: {{ filteredImages.length }} 张
+      </span>
+    </div>
+
     <!-- Loading -->
     <div v-if="loading" class="loading-box neon-box">
       <span class="loading-text">加载中...</span>
@@ -181,27 +224,31 @@ function userLabel(userId: number): string {
             <th class="col-title">标题</th>
             <th class="col-user">上传者</th>
             <th class="col-album">相册</th>
+            <th class="col-privacy">权限</th>
             <th class="col-tags">标签</th>
             <th class="col-date">创建时间</th>
             <th class="col-actions">操作</th>
           </tr>
         </thead>
         <tbody>
-          <template v-for="img in images" :key="img.id">
+          <template v-for="img in filteredImages" :key="img.id">
             <!-- Normal row -->
             <tr v-if="editingId !== img.id">
               <td class="col-thumb">
                 <img
-                  v-if="img.thumbnail_url"
-                  :src="img.thumbnail_url"
+                  v-if="img.lsky_url"
+                  :src="img.lsky_url"
                   :alt="img.title"
                   class="thumb-img"
                 />
                 <span v-else class="thumb-placeholder">—</span>
               </td>
               <td class="col-title">{{ img.title || '无标题' }}</td>
-              <td class="col-user">{{ userLabel(img.user_id) }}</td>
+              <td class="col-user" :title="'UID: ' + img.uploaded_by">
+                {{ userLabel(img) }}
+              </td>
               <td class="col-album">{{ albumName(img.album_id) }}</td>
+              <td class="col-privacy">{{ privacyLabel(img.privacy) }}</td>
               <td class="col-tags">
                 <span v-if="img.tags?.length" class="tag-list">
                   <span v-for="t in img.tags" :key="t" class="tag-chip">{{ t }}</span>
@@ -228,11 +275,18 @@ function userLabel(userId: number): string {
               <td class="col-title">
                 <input v-model="editTitle" class="edit-input" placeholder="标题" />
               </td>
-              <td class="col-user">{{ userLabel(img.user_id) }}</td>
+              <td class="col-user">{{ userLabel(img) }}</td>
               <td class="col-album">
                 <select v-model.number="editAlbumId" class="edit-select">
                   <option :value="null">无相册</option>
                   <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </select>
+              </td>
+              <td class="col-privacy">
+                <select v-model="editPrivacy" class="edit-select">
+                  <option value="public">公开</option>
+                  <option value="friends">好友可见</option>
+                  <option value="private">私密</option>
                 </select>
               </td>
               <td class="col-tags">
@@ -250,15 +304,17 @@ function userLabel(userId: number): string {
           </template>
 
           <!-- Empty -->
-          <tr v-if="images.length === 0">
-            <td colspan="7" class="empty-cell">暂无图片数据</td>
+          <tr v-if="filteredImages.length === 0">
+            <td colspan="8" class="empty-cell">
+              {{ userEmailFilter ? '没有匹配筛选条件的图片' : '暂无图片数据' }}
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <!-- Pagination -->
-    <div v-if="!loading && totalPages > 1" class="pagination">
+    <div v-if="!loading && totalPages > 1 && !userEmailFilter" class="pagination">
       <button :disabled="currentPage === 1" @click="goPage(1)">|«</button>
       <button :disabled="currentPage === 1" @click="goPage(currentPage - 1)">«</button>
       <button
@@ -344,6 +400,48 @@ function userLabel(userId: number): string {
 .neon-link:hover {
   color: var(--neon-yellow);
   text-shadow: 0 0 12px var(--neon-yellow);
+}
+
+/* ── Filter bar ───────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 8px 14px;
+  background: #0a0a0a;
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-cyan);
+  box-shadow:
+    inset 0 0 6px rgba(0, 255, 255, 0.1),
+    0 0 8px rgba(0, 255, 255, 0.15);
+  outline: none;
+  min-width: 260px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.filter-input::placeholder {
+  color: rgba(0, 255, 255, 0.25);
+}
+
+.filter-input:focus {
+  border-color: var(--neon-yellow);
+  box-shadow:
+    inset 0 0 8px rgba(255, 255, 0, 0.15),
+    0 0 12px var(--neon-yellow);
+}
+
+.filter-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px var(--neon-cyan);
 }
 
 /* ── Error / Loading ──────────────────────────────── */
@@ -448,7 +546,7 @@ function userLabel(userId: number): string {
 /* Columns */
 .col-thumb { width: 80px; text-align: center; }
 .col-title { min-width: 140px; }
-.col-user { width: 80px; }
+.col-user { min-width: 120px; }
 .col-album { width: 100px; }
 .col-tags { min-width: 120px; }
 .col-date { width: 110px; white-space: nowrap; }
@@ -497,6 +595,15 @@ function userLabel(userId: number): string {
 
 .text-muted {
   color: #555;
+}
+
+/* Empty cell */
+.empty-cell {
+  text-align: center;
+  padding: 40px 20px !important;
+  color: #555;
+  font-family: var(--font-mono);
+  font-size: 14px;
 }
 
 /* ── Edit row ─────────────────────────────────────── */
@@ -628,23 +735,22 @@ function userLabel(userId: number): string {
   font-size: 13px;
   padding: 6px 12px;
   background: #000;
-  color: var(--neon-cyan);
-  border: 1px solid var(--neon-cyan);
-  box-shadow: 0 0 6px rgba(0, 255, 255, 0.15);
+  color: var(--neon-green);
+  border: 1px solid var(--neon-green);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .pagination button:hover:not(:disabled) {
-  background: rgba(0, 255, 255, 0.1);
-  box-shadow: 0 0 12px var(--neon-cyan);
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 10px var(--neon-green);
 }
 
 .pagination button.active {
-  background: var(--neon-cyan);
-  color: #000;
-  font-weight: bold;
-  box-shadow: 0 0 16px var(--neon-cyan);
+  background: rgba(0, 255, 0, 0.15);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 12px var(--neon-cyan);
 }
 
 .pagination button:disabled {
@@ -652,35 +758,26 @@ function userLabel(userId: number): string {
   cursor: not-allowed;
 }
 
-/* ── Empty ────────────────────────────────────────── */
-.empty-cell {
-  text-align: center;
-  padding: 40px 20px !important;
-  color: #555;
-  font-size: 14px;
-}
-
-/* ── Modal (confirm delete) ───────────────────────── */
+/* ── Modal ────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
 }
 
 .modal-card {
   position: relative;
   background: #000;
-  border: 3px double var(--neon-red);
-  box-shadow:
-    var(--glow-red),
-    0 0 60px rgba(255, 0, 0, 0.15);
-  padding: 32px 28px;
+  border: 2px double var(--neon-red);
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+  padding: 28px 32px;
   max-width: 420px;
   width: 90%;
+  overflow: hidden;
 }
 
 .modal-card .scanlines {
@@ -721,11 +818,5 @@ function userLabel(userId: number): string {
   gap: 8px;
   position: relative;
   z-index: 3;
-}
-
-.modal-actions .action-btn {
-  margin-right: 0;
-  font-size: 13px;
-  padding: 8px 16px;
 }
 </style>

@@ -54,6 +54,8 @@ func setupIntegrationDB(t *testing.T) (*sql.DB, func()) {
 			name TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
 			created_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
+			is_friend_album INTEGER DEFAULT 0,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
@@ -66,6 +68,7 @@ func setupIntegrationDB(t *testing.T) (*sql.DB, func()) {
 			lsky_url TEXT NOT NULL,
 			thumbnail_url TEXT NOT NULL DEFAULT '',
 			uploaded_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
@@ -79,6 +82,17 @@ func setupIntegrationDB(t *testing.T) (*sql.DB, func()) {
 			user_id INTEGER NOT NULL REFERENCES users(id),
 			content TEXT NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE TABLE notifications (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES users(id),
+			type TEXT NOT NULL,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL,
+			related_id INTEGER,
+			image_id INTEGER,
+			is_read INTEGER DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 	`)
 	require.NoError(t, err, "failed to create tables")
@@ -112,6 +126,7 @@ func setupIntegrationTest(t *testing.T) *integrationTestFixture {
 	albumRepo := repository.NewAlbumRepository(db)
 	imageRepo := repository.NewImageRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	// Services (mocked)
 	jwtSvc := newTestJWTService()
@@ -125,19 +140,19 @@ func setupIntegrationTest(t *testing.T) *integrationTestFixture {
 	authHandler := NewAuthHandler(userRepo, jwtSvc, emailSvc, "")
 	albumHandler := NewAlbumHandler(albumRepo)
 	imageHandler := NewImageHandler(imageRepo, lskyClient, 10)
-	commentHandler := NewCommentHandler(commentRepo, db)
+	commentHandler := NewCommentHandler(commentRepo, imageRepo, userRepo, notificationRepo, emailSvc, db)
 	adminHandler := NewAdminHandler(userRepo, emailSvc)
 
 	// Echo server
 	e := echo.New()
 
-	// ── Public routes ──
+	// ── Public routes (with optional auth) ──
 	e.GET("/api/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
-	e.GET("/api/albums", albumHandler.ListAlbums)
-	e.GET("/api/images", imageHandler.ListImages)
-	e.GET("/api/images/search", imageHandler.SearchImages)
+	e.GET("/api/albums", albumHandler.ListAlbums, middleware.OptionalAuth(jwtSvc))
+	e.GET("/api/images", imageHandler.ListImages, middleware.OptionalAuth(jwtSvc))
+	e.GET("/api/images/search", imageHandler.SearchImages, middleware.OptionalAuth(jwtSvc))
 	e.GET("/api/images/:id", imageHandler.GetImage)
 	e.GET("/api/images/:id/comments", commentHandler.ListByImage)
 

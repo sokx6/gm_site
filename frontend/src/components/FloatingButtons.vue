@@ -2,9 +2,11 @@
 const props = withDefaults(
   defineProps<{
     isLoggedIn?: boolean
+    isAdmin?: boolean
   }>(),
   {
     isLoggedIn: false,
+    isAdmin: false,
   }
 )
 
@@ -12,6 +14,8 @@ const emit = defineEmits<{
   login: []
   register: []
   upload: []
+  admin: []
+  friend: []
 }>()
 
 function scrollToTop() {
@@ -29,27 +33,41 @@ function scrollToTop() {
       TOP
     </button>
 
-    <template v-if="!props.isLoggedIn">
-      <button
-        class="float-btn float-btn--login"
-        @click="emit('login')"
-      >
-        登录
-      </button>
-      <button
-        class="float-btn float-btn--register"
-        @click="emit('register')"
-      >
-        注册
-      </button>
-    </template>
-
     <button
-      v-else
+      v-if="props.isLoggedIn"
       class="float-btn float-btn--upload"
       @click="emit('upload')"
     >
-      上传
+       上传
+    </button>
+    <button
+      v-if="props.isLoggedIn"
+      class="float-btn float-btn--friend"
+      @click="emit('friend')"
+    >
+       好友
+    </button>
+    <button
+      v-else
+      class="float-btn float-btn--login"
+      @click="emit('login')"
+    >
+       登录
+    </button>
+    <button
+      v-if="!props.isLoggedIn"
+      class="float-btn float-btn--register"
+      @click="emit('register')"
+    >
+       注册
+    </button>
+
+    <button
+      v-if="props.isAdmin"
+      class="float-btn float-btn--admin"
+      @click="emit('admin')"
+    >
+      管理
     </button>
   </div>
 </template>
@@ -59,7 +77,7 @@ function scrollToTop() {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 100;
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -125,6 +143,26 @@ function scrollToTop() {
 
 .float-btn--upload:hover {
   background: rgba(255, 255, 0, 0.1);
+}
+
+.float-btn--friend {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.float-btn--friend:hover {
+  background: rgba(0, 255, 255, 0.1);
+}
+
+.float-btn--admin {
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+  box-shadow: var(--glow-red);
+}
+
+.float-btn--admin:hover {
+  background: rgba(255, 0, 0, 0.1);
 }
 
 @keyframes float-blink {

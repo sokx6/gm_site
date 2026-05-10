@@ -65,3 +65,7 @@ desktop.ini
 # === Misc ===
 *.bak
 *.tmp
+session-ses_*.md
+gm_site_server
+server
+*.zip

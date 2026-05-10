@@ -32,13 +32,12 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('refreshToken')
   }
 
-  // Try restore session from token on app start
+  // Try restore session from API on app start
   async function tryRestoreSession() {
     if (!accessToken.value) return
     try {
-      // Decode JWT to get user info from claims (or call /api/auth/me if exists)
-      const payload = JSON.parse(atob(accessToken.value.split('.')[1]))
-      user.value = { id: payload.user_id, email: '', nickname: '', role: payload.role, status: 'approved' }
+      const res = await authApi.getMe()
+      user.value = res.data
     } catch {
       logout()
     }

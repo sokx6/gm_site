@@ -7,6 +7,8 @@ interface Image {
   lsky_url: string
   tags: string[]
   uploaded_by: number
+  uploader_name: string
+  privacy?: string
   created_at: string
 }
 
@@ -59,6 +61,16 @@ function tagColor(idx: number): string {
     <div class="card-body">
       <div class="card-label">
         <span class="card-title">{{ props.image.title }}</span>
+        <span
+          v-if="props.image.privacy === 'private'"
+          class="privacy-badge privacy-private"
+          title="私密"
+        >🔒</span>
+        <span
+          v-if="props.image.privacy === 'friends'"
+          class="privacy-badge privacy-friends"
+          title="好友可见"
+        >👥</span>
         <span
           v-for="(tag, i) in props.image.tags"
           :key="tag"
@@ -169,5 +181,20 @@ function tagColor(idx: number): string {
   font-family: var(--font-mono);
   font-size: 11px;
   color: #666;
+}
+
+.privacy-badge {
+  font-size: 12px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px currentColor);
+  margin-left: 2px;
+}
+
+.privacy-private {
+  color: var(--neon-pink);
+}
+
+.privacy-friends {
+  color: var(--neon-cyan);
 }
 </style>

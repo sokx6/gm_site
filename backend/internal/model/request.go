@@ -36,5 +36,11 @@ type UpdateImageRequest struct {
 
 // CreateCommentRequest is the payload for creating a comment.
 type CreateCommentRequest struct {
-	Content string `json:"content" validate:"required,max=500"`
+	Content  string `json:"content" validate:"required,max=500"`
+	ParentID *int64 `json:"parent_id"`
+}
+
+// SendFriendRequest is the payload for sending a friend request.
+type SendFriendRequest struct {
+	Email string `json:"email" validate:"required,email"`
 }

@@ -12,6 +12,8 @@ type Image struct {
 	LskyURL      string    `json:"lsky_url" db:"lsky_url"`
 	ThumbnailURL string    `json:"thumbnail_url" db:"thumbnail_url"`
 	UploadedBy   int64     `json:"uploaded_by" db:"uploaded_by"`
+	UploaderName string    `json:"uploader_name,omitempty" db:"-"`
+	Privacy      string    `json:"privacy" db:"privacy"` // public/friends/private
 	CommentCount int64     `json:"comment_count" db:"-"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`

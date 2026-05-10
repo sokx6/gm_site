@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -14,11 +16,18 @@ import (
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 
+	"gm_site/internal/logger"
 	"gm_site/internal/middleware"
 	"gm_site/internal/model"
 	"gm_site/internal/repository"
 	"gm_site/internal/service"
 )
+
+// TestMain initializes the global logger for all handler tests.
+func TestMain(m *testing.M) {
+	logger.L = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	os.Exit(m.Run())
+}
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -29,6 +38,13 @@ type mockEmailService struct{}
 
 func (m *mockEmailService) SendAdminNotification(_, _ string) error { return nil }
 func (m *mockEmailService) SendApprovalNotification(_ string, _ bool) error { return nil }
+func (m *mockEmailService) SendRegisterApprovedNotification(_ string) error { return nil }
+func (m *mockEmailService) SendRegisterRejectedNotification(_ string) error { return nil }
+func (m *mockEmailService) SendCommentReplyNotification(_, _, _ string) error { return nil }
+func (m *mockEmailService) SendFriendRequestNotification(_, _ string) error { return nil }
+func (m *mockEmailService) SendFriendAcceptedNotification(_, _ string) error { return nil }
+func (m *mockEmailService) SendFriendRejectedNotification(_, _ string) error { return nil }
+func (m *mockEmailService) SendImageCommentNotification(_, _, _, _ string) error { return nil }
 
 // generateAccessToken creates a valid JWT access token for testing.
 func generateAccessToken(t *testing.T, jwtSvc *service.JWTService, userID int64, role string) string {

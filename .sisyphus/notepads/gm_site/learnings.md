@@ -389,3 +389,72 @@
 
 ### Test results
 - All 5 tests pass, 0 lsp errors (1 cosmetic hint on for loop modernization)
+
+## F3 Regression Check — Sat May  9 08:48:59 AM UTC 2026
+
+### Results
+- Site: http://qgx91.xyz (HTTP only, HTTPS connection refused)
+- Gallery cards: 2  elements detected
+- Popup: Opens on click,  shows "👤 上传者: locxl"
+- Uploader name: **locxl** (NOT User#1 — PASS)
+- TOP button:  present, scrolls from 359→0 — PASS
+- Screenshot: Saved at  (164K, 780×493)
+
+### Notable
+- Admin page '/admin' showed uploader as  in previous push — this is now consistent in gallery popup
+- HTTPS (port 443) connection refused — site only serves HTTP on port 80
+- Page title is "frontend" (Vite default, not customized)
+
+## F3 Regression Check — 2026-05-09
+
+### Results
+- Site: http://qgx91.xyz (HTTP only, HTTPS connection refused)
+- Gallery cards: 2 gallery-card elements detected
+- Popup: Opens on click, popup-uploader shows "👤 上传者: locxl"
+- Uploader name: locxl (NOT User#1 — PASS)
+- TOP button: float-btn--top present, scrolls from 359→0 — PASS
+- Screenshot: Saved at .sisyphus/evidence/final-regression.png (164K, 780×493)
+
+### Notable
+- Admin page /admin showed uploader as locxl in previous push — consistent in gallery popup
+- HTTPS (port 443) connection refused — site only serves HTTP on port 80
+- Page title is "frontend" (Vite default, not customized)
+
+## T4 — Friend Repository, Notification Repository, Friend Service
+
+### Created Files
+- `backend/internal/repository/friend.go` — FriendRepository: CRUD for friend_requests + bidirectional friends
+- `backend/internal/repository/notification.go` — NotificationRepository: Create, GetByUser, MarkRead
+- `backend/internal/service/friend.go` — FriendService: SendRequest, AcceptRequest, RejectRequest, GetPendingRequests, GetFriends, RemoveFriend
+
+### Modified Files
+- `backend/internal/service/email.go` — Extended EmailService interface with 3 friend notification methods + SmtpEmailService + MockEmailService implementations
+
+### Architecture Decisions
+- Friendship is **bidirectional**: two INSERTs in a transaction (user→friend + friend→user), same for DELETE
+- Email sending is **async** via `go func()` with `logger.L.Error` for failures, matching the auth.go handler pattern
+- FriendService constructor takes `*UserRepository` (beyond task spec) because async email lookups need user email/nickname
+- SQLite uses `?` placeholders (task mentioned `$1` but sqlite driver requires `?`)
+- Error wrapping uses `fmt.Errorf("repository: ... %w", err)` pattern consistent with existing user.go
+
+### Verification
+- `go build ./internal/repository/...` ✅
+- `go build ./internal/service/...` ✅
+- Pre-existing build errors in `handler/image.go` (arg count mismatch) unrelated to this task
+
+## email.go edits (2026-05-09)
+
+### File reversion issues
+- The file kept partially reverting after Edit/Write tool operations. Import changes stuck but mock method body changes reverted. Root cause unclear — no active git hooks or file watchers detected.
+- **Workaround**: Used `cat` heredoc via bash tool to write entire file atomically — this worked.
+
+### Changes made
+- Replaced `"gm_site/internal/logger"` import with `"log"`
+- Updated `SendFriendRequestNotification`: subject "好友请求", body streamlined
+- Updated `SendFriendAcceptedNotification`: subject "好友请求已通过", body streamlined
+- Updated `SendFriendRejectedNotification`: body streamlined (subject unchanged)
+- Added `SendRegisterApprovedNotification`: subject "账号审核通过"
+- Added `SendRegisterRejectedNotification`: subject "账号审核未通过"
+- Added `SendCommentReplyNotification`: subject "评论被回复"
+- Added `ImageTitle` field to `MockEmailMessage` struct
+- Converted all mock `logger.L.Info` calls to `log.Printf("[MockEmail] ...")`

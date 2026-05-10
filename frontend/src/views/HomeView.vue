@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getImages, searchImages, type ImageData } from '@/api/images'
+import { getAlbums, type AlbumData } from '@/api/albums'
+import UploadModal from '@/components/UploadModal.vue'
 import ParticleBg from '@/components/ParticleBg.vue'
 import LayoutShell from '@/components/LayoutShell.vue'
 import TopNotifyBar from '@/components/TopNotifyBar.vue'
@@ -11,11 +13,12 @@ import RainbowBanner from '@/components/RainbowBanner.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import AlbumFilter from '@/components/AlbumFilter.vue'
 import GalleryGrid from '@/components/GalleryGrid.vue'
-import CommentSection from '@/components/CommentSection.vue'
 import StatsBar from '@/components/StatsBar.vue'
 import VisitorCounter from '@/components/VisitorCounter.vue'
+import FriendPanel from '@/components/FriendPanel.vue'
 import FloatingButtons from '@/components/FloatingButtons.vue'
 import ImagePopup from '@/components/ImagePopup.vue'
+import { onlineCount as topOnline, totalVisitors as visitorCount, newMembers as topNewMembers, uptimeDays as topUptime, connect, disconnect } from '@/composables/useStatsWebSocket'
 
 // ── Local image type (matches component interface) ──
 interface GalleryImage {
@@ -24,6 +27,8 @@ interface GalleryImage {
   lsky_url: string
   tags: string[]
   uploaded_by: number
+  uploader_name: string
+  privacy?: string
   created_at: string
 }
 
@@ -31,9 +36,11 @@ function mapImage(api: ImageData): GalleryImage {
   return {
     id: api.id,
     title: api.title,
-    lsky_url: api.url,
+    lsky_url: api.lsky_url || api.url || '',
     tags: api.tags ?? [],
-    uploaded_by: api.user_id,
+    uploaded_by: api.uploaded_by,
+    uploader_name: api.uploader_name || '',
+    privacy: api.privacy,
     created_at: api.created_at,
   }
 }
@@ -55,11 +62,27 @@ const searchNoResults = ref(false)
 const pageSize = 12
 
 // ── Popup state ──
-const selectedImage = ref<GalleryImage | null>(null)
-const showPopup = ref(false)
+const openPopups = ref<GalleryImage[]>([])
 
-// ── Visitor count (placeholder, wired later) ──
-const visitorCount = ref(0)
+// ── Upload state ──
+const showUploadModal = ref(false)
+const showFriendPanel = ref(false)
+const albumList = ref<AlbumData[]>([])
+
+// ── Site name ──
+const siteName = ref('群友风采')
+
+async function fetchSiteName() {
+  try {
+    const res = await fetch('/api/site')
+    const data = await res.json()
+    if (data.data?.name) siteName.value = data.data.name
+  } catch {
+    // fallback to default
+  }
+}
+
+
 
 // ── Fetch ──
 async function fetchImages(reset = false) {
@@ -144,26 +167,94 @@ function onLoadMore() {
 function onCardClick(imageId: number) {
   const img = images.value.find((i) => i.id === imageId)
   if (img) {
-    selectedImage.value = img
-    showPopup.value = true
+    openPopups.value.push(img)
   }
 }
 
-function onPopupClose() {
-  showPopup.value = false
+function onPopupClose(imageId: number) {
+  openPopups.value = openPopups.value.filter((i) => i.id !== imageId)
+}
+
+function onUploadClick() {
+  showUploadModal.value = true
+}
+
+function onUploadModalClose() {
+  showUploadModal.value = false
+}
+
+function onUploaded() {
+  fetchImages(true)
+  showUploadModal.value = false
+}
+
+async function fetchAlbums() {
+  try {
+    const res = await getAlbums()
+    albumList.value = res.data ?? []
+  } catch {
+    albumList.value = []
+  }
+}
+
+// ── Hitokoto quotes ──
+const hitokotoQuotes = ref<string[]>([])
+
+async function fetchHitokoto() {
+  try {
+    const res = await fetch(`https://v1.hitokoto.cn/?c=a&c=b&c=d&_t=${Date.now()}${Math.random()}`)
+    const data = await res.json()
+    return data.hitokoto + ' —— ' + (data.from || '佚名')
+  } catch {
+    return null
+  }
+}
+
+const marqueeCount = ref(3)
+
+function calcMarqueeCount() {
+  marqueeCount.value = Math.max(3, Math.floor(window.innerHeight / 80))
+}
+
+async function refreshHitokotoQuotes() {
+  calcMarqueeCount()
+  const fetches = Array.from({ length: marqueeCount.value }, () => fetchHitokoto())
+  const results = await Promise.all(fetches)
+  const valid = results.filter((q): q is string => q !== null)
+  if (valid.length >= 3) {
+    hitokotoQuotes.value = valid
+  } else {
+    hitokotoQuotes.value = Array.from({ length: marqueeCount.value }, () => '加载中...')
+  }
 }
 
 // ── Lifecycle ──
+let hitokotoTimer: ReturnType<typeof setInterval> | null = null
+
 onMounted(() => {
+  fetchSiteName()
   fetchImages(true)
+  fetchAlbums()
+  connect()
+  calcMarqueeCount()
+  refreshHitokotoQuotes()
+  hitokotoTimer = setInterval(refreshHitokotoQuotes, 30000)
+  window.addEventListener('resize', calcMarqueeCount)
 })
 
-// ── Computed ──
-const showComments = computed(
-  () => showPopup.value && selectedImage.value !== null
-)
+onUnmounted(() => {
+  disconnect()
+  if (hitokotoTimer) clearInterval(hitokotoTimer)
+  window.removeEventListener('resize', calcMarqueeCount)
+})
 
-const popupImage = computed(() => selectedImage.value)
+// ── Marquee color helper ──
+const marqueeColors = ['green', 'pink', 'yellow'] as const
+function marqueeColor(i: number): 'green' | 'pink' | 'yellow' {
+  return marqueeColors[i % 3]
+}
+
+// ── Computed ──
 </script>
 
 <template>
@@ -172,32 +263,26 @@ const popupImage = computed(() => selectedImage.value)
     <!-- ── Top bar ── -->
     <template #top>
       <TopNotifyBar
-        online-count="--"
-        new-members="--"
-        uptime="--"
+        :online-count="topOnline"
+        :new-members="topNewMembers"
+        :uptime="topUptime"
       />
     </template>
 
     <!-- ── Left sidebar ── -->
     <template #left-sidebar>
       <Marquee
-        text="🔥 欢迎来到群友风采展示站 · 奥力给 · 冲冲冲 🔥"
-        color="green"
-      />
-      <Marquee
-        text="💪 群友出征 · 寸草不生 · 天下无敌 💪"
-        color="pink"
-      />
-      <Marquee
-        text="⚡ CYBERPUNK 2077 · 霓虹永不熄灭 ⚡"
-        color="yellow"
+        v-for="(quote, i) in hitokotoQuotes"
+        :key="i"
+        :text="quote"
+        :color="marqueeColor(i)"
       />
     </template>
 
     <!-- ── Main area ── -->
     <template #main>
       <RainbowBanner
-        title="群友风采"
+        :title="siteName"
         subtitle="Official Fan Site"
       />
 
@@ -223,14 +308,6 @@ const popupImage = computed(() => selectedImage.value)
         <span>未找到相关图片</span>
       </div>
 
-      <CommentSection
-        v-if="showComments"
-        :key="selectedImage?.id"
-        :image-id="selectedImage!.id"
-        :is-logged-in="auth.isLoggedIn"
-        :current-user-id="auth.user?.id ?? 0"
-        :is-admin="auth.isAdmin"
-      />
     </template>
 
     <!-- ── Right sidebar ── -->
@@ -239,22 +316,38 @@ const popupImage = computed(() => selectedImage.value)
       <div class="visitor-wrap">
         <VisitorCounter :count="visitorCount" />
       </div>
+      <FriendPanel v-if="showFriendPanel && auth.isLoggedIn" />
     </template>
   </LayoutShell>
 
   <!-- ── Floating action buttons ── -->
   <FloatingButtons
     :is-logged-in="auth.isLoggedIn"
+    :is-admin="auth.isAdmin"
     @login="router.push('/login')"
     @register="router.push('/register')"
+    @upload="onUploadClick"
+    @admin="router.push('/admin')"
+    @friend="showFriendPanel = !showFriendPanel"
+  />
+
+  <UploadModal
+    :visible="showUploadModal"
+    :albums="albumList"
+    @close="onUploadModalClose"
+    @uploaded="onUploaded"
   />
 
   <!-- ── Image popup ── -->
   <ImagePopup
-    v-if="popupImage"
-    :image="popupImage"
-    :visible="showPopup"
-    @close="onPopupClose"
+    v-for="img in openPopups"
+    :key="img.id"
+    :image="img"
+    :visible="true"
+    :is-logged-in="auth.isLoggedIn"
+    :current-user-id="auth.user?.id ?? 0"
+    :is-admin="auth.isAdmin"
+    @close="onPopupClose(img.id)"
   />
 </template>
 

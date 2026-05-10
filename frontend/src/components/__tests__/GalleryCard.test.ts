@@ -9,6 +9,7 @@ describe('GalleryCard', () => {
     lsky_url: 'https://example.com/test.png',
     tags: ['nature', 'travel'],
     uploaded_by: 42,
+    uploader_name: 'TestUser',
     created_at: '2025-01-15T10:00:00Z',
   }
 

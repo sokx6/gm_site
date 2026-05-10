@@ -28,40 +28,45 @@ smtp:
   # SMTP 服务器地址（163邮箱: smtp.163.com）
   host: "smtp.163.com"
   # SMTP 服务器端口（163邮箱TLS: 587）
-  port: 587
+  port: 465
   # SMTP 登录用户名（完整邮箱地址）
-  username: "your-email@163.com"
+  username: "lbd1826@163.com"
   # SMTP 登录密码（163邮箱为授权码，非邮箱登录密码）
   # 可通过环境变量 GM_SMTP_PASSWORD 覆盖
-  password: "your-smtp-password-here"
+  password: "BXaGDi6tijBeD95Z"
   # 发件人地址（通常与 username 相同）
-  from: "your-email@163.com"
+  from: "lbd1826@163.com"
   # 管理员邮箱（接收新用户注册通知）
-  admin_email: "admin@example.com"
+  admin_email: "2841929072@qq.com"
   # 是否使用 TLS 加密连接
   use_tls: true
 
 lsky:
   # 兰空图床 Base URL（末尾不要带斜杠）
-  base_url: "https://your-lsky-instance.com"
+  base_url: "https://image.locxl.site"
   # 兰空图床登录邮箱
-  email: "lsky@example.com"
+  email: "2841929072@qq.com"
   # 兰空图床登录密码
   # 可通过环境变量 GM_LSKY_PASSWORD 覆盖
-  password: "your-lsky-password-here"
+  password: "Zsh20061210@Image"
   # 兰空图床 Token（留空则程序启动时自动获取）
   token: ""
 
 admin:
   # 管理员邮箱：使用此邮箱注册的用户自动获得管理员权限
-  email: "admin@example.com"
+  email: "2841929072@qq.com"
 
 site:
   # 站点名称（群友昵称，用于页面展示）
   name: "顾夏"
   # 安全运行起始日期（格式: YYYY-MM-DD，用于计算运行天数）
-  start_date: "2024-01-01"
+  start_date: "2026-05-09"
 
 upload:
   # 单张图片上传大小限制（单位: MB）
   max_size_mb: 10
+
+cors:
+  # 允许的跨域来源（逗号分隔），留空默认 http://localhost:5173
+  # 生产环境请填写前端部署地址，如 https://your-frontend-domain.com
+  allowed_origins: "https://qgx91.xyz"

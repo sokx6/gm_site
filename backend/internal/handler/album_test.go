@@ -51,6 +51,8 @@ func setupAlbumTestDB(t *testing.T) (*sql.DB, func()) {
 			name TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
 			created_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
+			is_friend_album INTEGER DEFAULT 0,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE TABLE images (
@@ -62,8 +64,16 @@ func setupAlbumTestDB(t *testing.T) (*sql.DB, func()) {
 			lsky_url TEXT NOT NULL,
 			thumbnail_url TEXT NOT NULL DEFAULT '',
 			uploaded_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE TABLE IF NOT EXISTS friends (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES users(id),
+			friend_id INTEGER NOT NULL REFERENCES users(id),
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(user_id, friend_id)
 		);
 	`)
 	require.NoError(t, err, "failed to create tables")
@@ -81,8 +91,8 @@ func insertAlbum(t *testing.T, db *sql.DB, name, description string, createdBy i
 
 	now := time.Now()
 	result, err := db.Exec(
-		`INSERT INTO albums (name, description, created_by, created_at)
-		 VALUES (?, ?, ?, ?)`,
+		`INSERT INTO albums (name, description, created_by, privacy, is_friend_album, created_at)
+		 VALUES (?, ?, ?, 'public', 0, ?)`,
 		name, description, createdBy, now,
 	)
 	require.NoError(t, err, "failed to insert test album")
@@ -123,8 +133,8 @@ func setupAlbumTest(t *testing.T) (*echo.Echo, *AlbumHandler, *sql.DB, *service.
 
 	e := echo.New()
 
-	// Public routes
-	e.GET("/api/albums", handler.ListAlbums)
+	// Public routes with optional auth
+	e.GET("/api/albums", handler.ListAlbums, middleware.OptionalAuth(jwtSvc))
 
 	// Authenticated routes
 	g := e.Group("/api/albums", middleware.AuthRequired(jwtSvc))

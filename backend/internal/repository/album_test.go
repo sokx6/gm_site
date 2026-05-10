@@ -45,6 +45,8 @@ func setupAlbumTestDB(t *testing.T) (*sql.DB, func()) {
 			name TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
 			created_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
+			is_friend_album INTEGER DEFAULT 0,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE TABLE images (
@@ -56,6 +58,7 @@ func setupAlbumTestDB(t *testing.T) (*sql.DB, func()) {
 			lsky_url TEXT NOT NULL,
 			thumbnail_url TEXT NOT NULL DEFAULT '',
 			uploaded_by INTEGER NOT NULL REFERENCES users(id),
+			privacy TEXT NOT NULL DEFAULT 'public',
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
@@ -102,8 +105,8 @@ func insertTestAlbum(t *testing.T, db *sql.DB, name, description string, created
 
 	now := time.Now()
 	result, err := db.Exec(
-		`INSERT INTO albums (name, description, created_by, created_at)
-		 VALUES (?, ?, ?, ?)`,
+		`INSERT INTO albums (name, description, created_by, privacy, is_friend_album, created_at)
+		 VALUES (?, ?, ?, 'public', 0, ?)`,
 		name, description, createdBy, now,
 	)
 	require.NoError(t, err, "failed to insert test album")
@@ -159,7 +162,7 @@ func TestAlbumRepository_FindAll(t *testing.T) {
 	a1 := insertTestAlbum(t, db, "Album 1", "First", user.ID)
 	a2 := insertTestAlbum(t, db, "Album 2", "Second", user.ID)
 
-	albums, err := repo.FindAll()
+	albums, err := repo.FindAll(0, true)
 	require.NoError(t, err, "FindAll should not error")
 	assert.Len(t, albums, 2, "should return 2 albums")
 
@@ -174,7 +177,7 @@ func TestAlbumRepository_FindAll_Empty(t *testing.T) {
 
 	repo := NewAlbumRepository(db)
 
-	albums, err := repo.FindAll()
+	albums, err := repo.FindAll(0, true)
 	require.NoError(t, err, "FindAll should not error")
 	assert.Empty(t, albums, "should return empty slice")
 }

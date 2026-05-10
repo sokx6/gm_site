@@ -2,19 +2,22 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+	"path/filepath"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
 	"gm_site/internal/config"
 	"gm_site/internal/database"
 	"gm_site/internal/handler"
+	"gm_site/internal/logger"
 	"gm_site/internal/middleware"
 	"gm_site/internal/repository"
 	"gm_site/internal/service"
@@ -22,30 +25,48 @@ import (
 )
 
 func main() {
+	configPath := flag.String("config", "config.local.yaml", "path to config file")
+	logPath := flag.String("log", "", "log file path (default: derived from config name)")
+	flag.Parse()
+
+	var logFile string
+	if *logPath != "" {
+		logFile = *logPath
+	} else {
+		cfgName := strings.TrimSuffix(filepath.Base(*configPath), filepath.Ext(*configPath))
+		logFile = fmt.Sprintf("/var/log/gm_site/%s.log", cfgName)
+	}
+
+	logger.Init(logFile)
+
 	// 加载配置
-	cfg, err := config.LoadConfig("")
+	cfg, err := config.LoadConfig(*configPath)
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		logger.L.Error("config load failed", "err", err)
+		os.Exit(1)
 	}
 
 	// 连接数据库
 	db, err := database.NewDatabase(cfg.Database.Path)
 	if err != nil {
-		log.Fatalf("failed to connect database: %v", err)
+		logger.L.Error("database connect failed", "err", err)
+		os.Exit(1)
 	}
 	defer db.Close()
-	log.Println("Database connected")
+	logger.L.Info("database connected")
 
 	// 执行迁移
 	if err := database.RunMigrations(db, "migrations"); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+		logger.L.Error("migrations failed", "err", err)
+		os.Exit(1)
 	}
-	log.Println("Migrations applied")
+	logger.L.Info("migrations applied")
 
 	// 解析站点运行起始日期
 	startDate, err := time.Parse("2006-01-02", cfg.Site.StartDate)
 	if err != nil {
-		log.Fatalf("failed to parse site start_date: %v", err)
+		logger.L.Error("site start_date parse failed", "err", err)
+		os.Exit(1)
 	}
 
 	// 初始化依赖
@@ -76,13 +97,18 @@ func main() {
 	albumRepo := repository.NewAlbumRepository(db)
 	imageRepo := repository.NewImageRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
+	friendRepo := repository.NewFriendRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	// 初始化处理器
 	authHandler := handler.NewAuthHandler(userRepo, jwtService, emailSvc, cfg.Admin.Email)
 	albumHandler := handler.NewAlbumHandler(albumRepo)
 	imageHandler := handler.NewImageHandler(imageRepo, lskyClient, cfg.Upload.MaxSizeMB)
-	commentHandler := handler.NewCommentHandler(commentRepo, db)
+	commentHandler := handler.NewCommentHandler(commentRepo, imageRepo, userRepo, notificationRepo, emailSvc, db)
+	friendSvc := service.NewFriendService(friendRepo, userRepo, emailSvc, notificationRepo)
+	friendHandler := handler.NewFriendHandler(friendSvc, userRepo, notificationRepo)
 	adminHandler := handler.NewAdminHandler(userRepo, emailSvc)
+	siteHandler := handler.NewSiteHandler(cfg.Site.Name)
 
 	// 初始化 WebSocket Hub
 	wsHub := ws.NewHub()
@@ -98,6 +124,9 @@ func main() {
 	// CORS 中间件
 	e.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
 
+	// 请求日志中间件
+	e.Use(middleware.LoggerMiddleware(logger.L))
+
 	// 访客统计中间件（跳过健康检查）
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -109,15 +138,16 @@ func main() {
 		}
 	})
 
-	// ── 公开路由 ──────────────────────────────────────────
+	// ── 公开路由（支持可选认证） ──────────────────────────
 	e.GET("/api/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
-	e.GET("/api/albums", albumHandler.ListAlbums)
-	e.GET("/api/images", imageHandler.ListImages)
-	e.GET("/api/images/search", imageHandler.SearchImages)
+	e.GET("/api/albums", albumHandler.ListAlbums, middleware.OptionalAuth(jwtService))
+	e.GET("/api/images", imageHandler.ListImages, middleware.OptionalAuth(jwtService))
+	e.GET("/api/images/search", imageHandler.SearchImages, middleware.OptionalAuth(jwtService))
 	e.GET("/api/images/:id", imageHandler.GetImage)
 	e.GET("/api/images/:id/comments", commentHandler.ListByImage)
+	e.GET("/api/site", siteHandler.Info)
 
 	// ── 认证路由（无需登录） ──────────────────────────────
 	e.POST("/api/auth/register", authHandler.Register)
@@ -127,14 +157,26 @@ func main() {
 	// ── 受保护路由（需要登录） ────────────────────────────
 	auth := e.Group("/api")
 	auth.Use(middleware.AuthRequired(jwtService))
+	auth.GET("/auth/me", authHandler.Me)
 	auth.POST("/albums", albumHandler.CreateAlbum)
 	auth.PUT("/albums/:id", albumHandler.UpdateAlbum)
+	auth.PUT("/albums/:id/privacy", albumHandler.UpdatePrivacy)
 	auth.DELETE("/albums/:id", albumHandler.DeleteAlbum)
 	auth.POST("/images/upload", imageHandler.UploadImage)
 	auth.PUT("/images/:id", imageHandler.UpdateImage)
+	auth.PUT("/images/:id/privacy", imageHandler.UpdatePrivacy)
 	auth.DELETE("/images/:id", imageHandler.DeleteImage)
 	auth.POST("/images/:id/comments", commentHandler.Create)
 	auth.DELETE("/comments/:id", commentHandler.Delete)
+	auth.POST("/friends/request", friendHandler.SendRequest)
+	auth.PUT("/friends/request/:id/accept", friendHandler.AcceptRequest)
+	auth.PUT("/friends/request/:id/reject", friendHandler.RejectRequest)
+	auth.GET("/friends/requests", friendHandler.GetRequests)
+	auth.GET("/friends", friendHandler.GetFriends)
+	auth.DELETE("/friends/:id", friendHandler.DeleteFriend)
+	auth.GET("/notifications", friendHandler.GetNotifications)
+	auth.PUT("/notifications/:id/read", friendHandler.MarkNotificationRead)
+	auth.POST("/comments/:id/reply", commentHandler.Reply)
 
 	// ── 管理员路由（需要登录 + admin 角色） ───────────────
 	admin := e.Group("/api/admin")

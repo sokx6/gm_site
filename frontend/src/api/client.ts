@@ -44,6 +44,7 @@ apiClient.interceptors.response.use(
         failedQueue = []
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
+        window.alert('登录已过期，请重新登录')
         window.location.hash = '#/login'
         return Promise.reject(refreshError)
       } finally {

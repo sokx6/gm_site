@@ -46,6 +46,7 @@ func (h *ImageHandler) UploadImage(c echo.Context) error {
 	// 1. Parse multipart form fields
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to get form file", "err", err)
 		return Error(c, http.StatusBadRequest, "请选择图片文件")
 	}
 
@@ -59,6 +60,7 @@ func (h *ImageHandler) UploadImage(c echo.Context) error {
 	if albumIDStr := c.FormValue("album_id"); albumIDStr != "" {
 		id, err := strconv.ParseInt(albumIDStr, 10, 64)
 		if err != nil {
+			middleware.GetLogger(c).Error("failed to parse album_id", "err", err)
 			return Error(c, http.StatusBadRequest, "无效的相册ID")
 		}
 		albumID = &id
@@ -75,6 +77,20 @@ func (h *ImageHandler) UploadImage(c echo.Context) error {
 		}
 	}
 
+	// Parse optional privacy (defaults to "public")
+	privacy := c.FormValue("privacy")
+	if privacy == "" {
+		privacy = "public"
+	}
+	validPrivacy := map[string]bool{
+		"public":  true,
+		"friends": true,
+		"private": true,
+	}
+	if !validPrivacy[privacy] {
+		return Error(c, http.StatusBadRequest, "无效的隐私设置，仅支持: public/friends/private")
+	}
+
 	// 2. Validate file size
 	maxBytes := int64(h.maxSizeMB) * 1024 * 1024
 	if fileHeader.Size > maxBytes {
@@ -84,6 +100,7 @@ func (h *ImageHandler) UploadImage(c echo.Context) error {
 	// 3. Validate MIME type by reading first 512 bytes
 	file, err := fileHeader.Open()
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to open uploaded file", "err", err)
 		return Error(c, http.StatusInternalServerError, "无法读取文件")
 	}
 	defer file.Close()
@@ -91,6 +108,7 @@ func (h *ImageHandler) UploadImage(c echo.Context) error {
 	buf := make([]byte, 512)
 	n, err := file.Read(buf)
 	if err != nil && err != io.EOF {
+		middleware.GetLogger(c).Error("failed to read file content for MIME detection", "err", err)
 		return Error(c, http.StatusBadRequest, "无法读取文件内容")
 	}
 
@@ -107,13 +125,15 @@ func (h *ImageHandler) UploadImage(c echo.Context) error {
 
 	// Seek back to beginning before passing to Lsky uploader
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		middleware.GetLogger(c).Error("failed to seek file to beginning", "err", err)
 		return Error(c, http.StatusInternalServerError, "无法处理文件")
 	}
 
 	// 4. Upload to Lsky
 	lskyURL, err := h.lskyClient.UploadImage(file, fileHeader)
 	if err != nil {
-		return Error(c, http.StatusInternalServerError, "图片上传失败")
+		middleware.GetLogger(c).Error("image upload to lsky failed", "err", err)
+		return Error(c, http.StatusInternalServerError, fmt.Sprintf("图片上传失败: %v", err))
 	}
 
 	// 5. Save to DB
@@ -128,9 +148,11 @@ func (h *ImageHandler) UploadImage(c echo.Context) error {
 		Tags:       tags,
 		LskyURL:    lskyURL,
 		UploadedBy: userID,
+		Privacy:    privacy,
 	}
 
 	if err := h.imageRepo.Create(image); err != nil {
+		middleware.GetLogger(c).Error("failed to save image to database", "err", err)
 		return Error(c, http.StatusInternalServerError, "保存图片信息失败")
 	}
 
@@ -160,6 +182,7 @@ func (h *ImageHandler) ListImages(c echo.Context) error {
 	if albumIDStr := c.QueryParam("album_id"); albumIDStr != "" {
 		id, err := strconv.ParseInt(albumIDStr, 10, 64)
 		if err != nil {
+			middleware.GetLogger(c).Error("failed to parse album_id in query", "err", err)
 			return Error(c, http.StatusBadRequest, "无效的相册ID")
 		}
 		albumID = &id
@@ -167,8 +190,15 @@ func (h *ImageHandler) ListImages(c echo.Context) error {
 
 	tag := c.QueryParam("tag")
 
-	images, total, err := h.imageRepo.FindAll(page, limit, albumID, tag)
+	viewerID, _ := c.Get(middleware.UserIDKey).(int64)
+	isAdmin := false
+	if role, ok := c.Get(middleware.UserRoleKey).(string); ok && role == model.UserRoleAdmin {
+		isAdmin = true
+	}
+
+	images, total, err := h.imageRepo.FindAll(page, limit, albumID, tag, viewerID, isAdmin)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to list images", "err", err)
 		return Error(c, http.StatusInternalServerError, "获取图片列表失败")
 	}
 
@@ -187,6 +217,7 @@ func (h *ImageHandler) GetImage(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to parse image id", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的图片ID")
 	}
 
@@ -195,6 +226,7 @@ func (h *ImageHandler) GetImage(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "图片不存在")
 		}
+		middleware.GetLogger(c).Error("failed to get image by id", "err", err)
 		return Error(c, http.StatusInternalServerError, "服务器内部错误")
 	}
 
@@ -209,6 +241,7 @@ func (h *ImageHandler) UpdateImage(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to parse image id", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的图片ID")
 	}
 
@@ -223,6 +256,7 @@ func (h *ImageHandler) UpdateImage(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "图片不存在")
 		}
+		middleware.GetLogger(c).Error("failed to get image for update", "err", err)
 		return Error(c, http.StatusInternalServerError, "服务器内部错误")
 	}
 
@@ -238,6 +272,7 @@ func (h *ImageHandler) UpdateImage(c echo.Context) error {
 		AlbumID     *int64   `json:"album_id"`
 	}
 	if err := c.Bind(&req); err != nil {
+		middleware.GetLogger(c).Error("failed to bind update image request", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的请求参数")
 	}
 
@@ -250,6 +285,7 @@ func (h *ImageHandler) UpdateImage(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "图片不存在")
 		}
+		middleware.GetLogger(c).Error("failed to update image", "err", err)
 		return Error(c, http.StatusInternalServerError, "更新图片失败")
 	}
 
@@ -263,6 +299,7 @@ func (h *ImageHandler) DeleteImage(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to parse image id", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的图片ID")
 	}
 
@@ -277,6 +314,7 @@ func (h *ImageHandler) DeleteImage(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "图片不存在")
 		}
+		middleware.GetLogger(c).Error("failed to get image for deletion", "err", err)
 		return Error(c, http.StatusInternalServerError, "服务器内部错误")
 	}
 
@@ -289,10 +327,73 @@ func (h *ImageHandler) DeleteImage(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "图片不存在")
 		}
+		middleware.GetLogger(c).Error("failed to delete image", "err", err)
 		return Error(c, http.StatusInternalServerError, "删除图片失败")
 	}
 
 	return Success(c, map[string]any{"deleted": true})
+}
+
+// UpdatePrivacy handles PUT /api/images/:id/privacy. Requires authentication.
+//
+// Only the uploader or an admin can change the privacy setting.
+// Request body: {"privacy": "public"|"friends"|"private"}
+func (h *ImageHandler) UpdatePrivacy(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		middleware.GetLogger(c).Error("failed to parse image id", "err", err)
+		return Error(c, http.StatusBadRequest, "无效的图片ID")
+	}
+
+	userID, ok := c.Get(middleware.UserIDKey).(int64)
+	if !ok {
+		return Error(c, http.StatusUnauthorized, "未登录")
+	}
+	role, _ := c.Get(middleware.UserRoleKey).(string)
+
+	image, err := h.imageRepo.FindByID(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Error(c, http.StatusNotFound, "图片不存在")
+		}
+		middleware.GetLogger(c).Error("failed to get image for privacy update", "err", err)
+		return Error(c, http.StatusInternalServerError, "服务器内部错误")
+	}
+
+	// Only the uploader or an admin can update privacy
+	if image.UploadedBy != userID && role != model.UserRoleAdmin {
+		return Error(c, http.StatusForbidden, "没有权限修改此图片的隐私设置")
+	}
+
+	var req struct {
+		Privacy string `json:"privacy"`
+	}
+	if err := c.Bind(&req); err != nil {
+		middleware.GetLogger(c).Error("failed to bind privacy update request", "err", err)
+		return Error(c, http.StatusBadRequest, "无效的请求参数")
+	}
+
+	// Validate privacy value
+	validPrivacy := map[string]bool{
+		"public":  true,
+		"friends": true,
+		"private": true,
+	}
+	if !validPrivacy[req.Privacy] {
+		return Error(c, http.StatusBadRequest, "无效的隐私设置，仅支持: public/friends/private")
+	}
+
+	if err := h.imageRepo.UpdatePrivacy(id, req.Privacy); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Error(c, http.StatusNotFound, "图片不存在")
+		}
+		middleware.GetLogger(c).Error("failed to update image privacy", "err", err)
+		return Error(c, http.StatusInternalServerError, "更新隐私设置失败")
+	}
+
+	image.Privacy = req.Privacy
+	return Success(c, image)
 }
 
 // SearchImages handles GET /api/images/search?q=keyword&page=1&limit=12.
@@ -313,8 +414,15 @@ func (h *ImageHandler) SearchImages(c echo.Context) error {
 		limit = 12
 	}
 
-	images, total, err := h.imageRepo.SearchImages(q, page, limit)
+	viewerID, _ := c.Get(middleware.UserIDKey).(int64)
+	isAdmin := false
+	if role, ok := c.Get(middleware.UserRoleKey).(string); ok && role == model.UserRoleAdmin {
+		isAdmin = true
+	}
+
+	images, total, err := h.imageRepo.SearchImages(q, page, limit, viewerID, isAdmin)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to search images", "err", err)
 		return Error(c, http.StatusInternalServerError, "搜索图片失败")
 	}
 

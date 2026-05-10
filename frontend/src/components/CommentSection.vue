@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import apiClient from '@/api/client'
 
 interface Comment {
   id: number
@@ -7,6 +8,8 @@ interface Comment {
   content: string
   user_id: number
   created_at: string
+  parent_id?: number
+  reply_count?: number
 }
 
 const props = withDefaults(
@@ -30,6 +33,11 @@ const submitting = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
 const loadMoreLoading = ref(false)
+const replyTo = ref<{ id: number; nickname: string } | null>(null)
+const replyMap = ref<Record<number, Comment[]>>({})
+const replyContent = ref('')
+const replySubmitting = ref(false)
+const expandedReplies = ref<Set<number>>(new Set())
 
 function formatTime(iso: string): string {
   const d = new Date(iso)
@@ -39,15 +47,11 @@ function formatTime(iso: string): string {
 
 async function fetchComments(append = false) {
   try {
-    const res = await fetch(
-      `/api/images/${props.imageId}/comments?page=${page.value}&per_page=10`
-    )
-    if (!res.ok) {
-      if (!append) comments.value = []
-      return
-    }
-    const data = await res.json()
-    const list: Comment[] = Array.isArray(data) ? data : (data.comments ?? [])
+    const res = await apiClient.get(`/api/images/${props.imageId}/comments`, {
+      params: { page: page.value, per_page: 10 }
+    })
+    const data = res.data
+    const list: Comment[] = Array.isArray(data) ? data : (data.data?.comments ?? [])
     if (append) {
       comments.value.push(...list)
     } else {
@@ -67,12 +71,7 @@ async function submitComment() {
   if (!content) return
   submitting.value = true
   try {
-    const res = await fetch(`/api/images/${props.imageId}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    })
-    if (!res.ok) return
+    await apiClient.post(`/api/images/${props.imageId}/comments`, { content })
     newComment.value = ''
     page.value = 1
     await fetchComments()
@@ -85,9 +84,7 @@ async function submitComment() {
 
 async function deleteComment(commentId: number) {
   try {
-    await fetch(`/api/images/${props.imageId}/comments/${commentId}`, {
-      method: 'DELETE',
-    })
+    await apiClient.delete(`/api/comments/${commentId}`)
     comments.value = comments.value.filter((c) => c.id !== commentId)
   } catch {
     // Graceful degradation
@@ -102,6 +99,65 @@ async function loadMore() {
   loadMoreLoading.value = true
   page.value++
   await fetchComments(true)
+}
+
+async function fetchReplies(parentId: number) {
+  try {
+    const res = await apiClient.get(`/api/images/${props.imageId}/comments`, {
+      params: { parent_id: parentId }
+    })
+    const data = res.data
+    const list: Comment[] = Array.isArray(data) ? data : (data.data?.comments ?? [])
+    replyMap.value[parentId] = list
+  } catch {
+    replyMap.value[parentId] = []
+  }
+}
+
+async function submitReply(parentId: number) {
+  const content = replyContent.value.trim()
+  if (!content) return
+  replySubmitting.value = true
+  try {
+    await apiClient.post(`/api/comments/${parentId}/reply`, { content, parent_id: parentId })
+    replyContent.value = ''
+    replyTo.value = null
+    await fetchReplies(parentId)
+    expandedReplies.value = new Set([...expandedReplies.value, parentId])
+    // Refresh the parent comment to get updated reply_count
+    await fetchComments()
+  } catch {
+    // Graceful degradation
+  } finally {
+    replySubmitting.value = false
+  }
+}
+
+async function toggleReplies(commentId: number) {
+  if (expandedReplies.value.has(commentId)) {
+    const next = new Set(expandedReplies.value)
+    next.delete(commentId)
+    expandedReplies.value = next
+  } else {
+    if (!replyMap.value[commentId]) {
+      await fetchReplies(commentId)
+    }
+    expandedReplies.value = new Set([...expandedReplies.value, commentId])
+  }
+}
+
+function startReply(comment: Comment) {
+  replyTo.value = { id: comment.id, nickname: comment.nickname }
+  replyContent.value = ''
+  nextTick(() => {
+    const el = document.getElementById(`reply-form-${comment.id}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+}
+
+function cancelReply() {
+  replyTo.value = null
+  replyContent.value = ''
 }
 
 onMounted(() => {
@@ -150,13 +206,86 @@ onMounted(() => {
           <span class="comment-time">{{ formatTime(comment.created_at) }}</span>
         </div>
         <p class="comment-content" v-text="comment.content" />
-        <button
-          v-if="canDelete(comment)"
-          class="comment-delete"
-          @click="deleteComment(comment.id)"
+        <div class="comment-actions">
+          <button
+            v-if="canDelete(comment)"
+            class="comment-delete"
+            @click="deleteComment(comment.id)"
+          >
+            删除
+          </button>
+          <button
+            v-if="props.isLoggedIn"
+            class="comment-reply-btn"
+            @click="startReply(comment)"
+          >
+            回复
+          </button>
+        </div>
+
+        <!-- Reply count / toggle -->
+        <div
+          v-if="(comment.reply_count ?? 0) > 0"
+          class="reply-count"
         >
-          删除
-        </button>
+          <button
+            class="reply-toggle"
+            @click="toggleReplies(comment.id)"
+          >
+            {{ expandedReplies.has(comment.id) ? '收起回复' : `${comment.reply_count} 条回复` }}
+          </button>
+        </div>
+
+        <!-- Nested replies -->
+        <div
+          v-if="expandedReplies.has(comment.id)"
+          class="replies-container"
+        >
+          <div
+            v-for="reply in replyMap[comment.id]"
+            :key="reply.id"
+            class="reply-item"
+          >
+            <div class="comment-header">
+              <span class="comment-nickname">{{ reply.nickname }}</span>
+              <span class="comment-time">{{ formatTime(reply.created_at) }}</span>
+            </div>
+            <p class="comment-content" v-text="reply.content" />
+            <button
+              v-if="canDelete(reply)"
+              class="comment-delete"
+              @click="deleteComment(reply.id)"
+            >
+              删除
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline reply form -->
+        <div
+          v-if="replyTo?.id === comment.id"
+          :id="`reply-form-${comment.id}`"
+          class="reply-form"
+        >
+          <div class="reply-to-hint">回复 @{{ replyTo.nickname }}:</div>
+          <textarea
+            v-model="replyContent"
+            class="comment-textarea neon-box"
+            placeholder="写下你的回复…"
+            rows="2"
+            maxlength="500"
+          />
+          <div class="reply-form-actions">
+            <button class="reply-cancel" @click="cancelReply">取消</button>
+            <button
+              class="comment-submit"
+              :disabled="replySubmitting || !replyContent.trim()"
+              @click="submitReply(comment.id)"
+            >
+              {{ replySubmitting ? '提交中…' : '回复' }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Load more -->
@@ -243,7 +372,6 @@ onMounted(() => {
 .comment-item {
   padding: 10px 0;
   border-bottom: 1px solid #1a1a1a;
-  position: relative;
 }
 
 .comment-header {
@@ -274,10 +402,105 @@ onMounted(() => {
   word-break: break-word;
 }
 
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.comment-reply-btn {
+  background: none;
+  border: none;
+  color: #555;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.2s;
+}
+
+.comment-reply-btn:hover {
+  color: var(--neon-pink);
+}
+
+.reply-count {
+  margin-top: 4px;
+}
+
+.reply-toggle {
+  background: none;
+  border: none;
+  color: #888;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+  transition: color 0.2s;
+}
+
+.reply-toggle:hover {
+  color: var(--neon-cyan);
+}
+
+.replies-container {
+  margin-left: 12px;
+  border-left: 1px solid #1a1a1a;
+  padding-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reply-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.reply-item:last-child {
+  border-bottom: none;
+}
+
+.reply-form {
+  margin-top: 8px;
+  margin-left: 12px;
+  padding: 10px;
+  border: 1px solid #222;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reply-to-hint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--neon-pink);
+}
+
+.reply-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.reply-cancel {
+  background: none;
+  border: 1px solid #333;
+  color: #888;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.reply-cancel:hover {
+  color: #fff;
+  border-color: #555;
+}
+
 .comment-delete {
-  position: absolute;
-  top: 10px;
-  right: 0;
   background: none;
   border: none;
   color: #555;

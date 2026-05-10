@@ -1,62 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-
-const onlineCount = ref('--')
-const totalVisitors = ref('--')
-const newMembers = ref('--')
-const uptimeDays = ref('--')
-
-let ws: WebSocket | null = null
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-let destroyed = false
-
-function connect() {
-  if (destroyed) return
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const url = import.meta.env.VITE_WS_URL 
-    ? `${import.meta.env.VITE_WS_URL}/api/ws` 
-    : `${protocol}//${location.host}/api/ws`
-
-  ws = new WebSocket(url)
-
-  ws.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-      if (msg.type === 'stats') {
-        if (msg.online !== undefined) onlineCount.value = String(msg.online)
-        if (msg.totalVisitors !== undefined) totalVisitors.value = String(msg.totalVisitors)
-        if (msg.newMembers !== undefined) newMembers.value = String(msg.newMembers)
-        if (msg.uptimeDays !== undefined) uptimeDays.value = String(msg.uptimeDays)
-      }
-    } catch {
-      // Ignore invalid JSON
-    }
-  }
-
-  ws.onclose = () => {
-    if (!destroyed) {
-      reconnectTimer = setTimeout(connect, 3000)
-    }
-  }
-
-  ws.onerror = () => {
-    ws?.close()
-  }
-}
+import { onMounted, onUnmounted } from 'vue'
+import { onlineCount, totalVisitors, newMembers, uptimeDays, connect, disconnect } from '@/composables/useStatsWebSocket'
 
 onMounted(() => {
   connect()
 })
 
 onUnmounted(() => {
-  destroyed = true
-  if (reconnectTimer) clearTimeout(reconnectTimer)
-  if (ws) {
-    ws.onclose = null
-    ws.onerror = null
-    ws.close()
-    ws = null
-  }
+  disconnect()
 })
 </script>
 

@@ -58,19 +58,31 @@ func (r *ImageRepository) Create(image *model.Image) error {
 
 // FindAll retrieves paginated images with optional album/tag filters.
 // Images are ordered by created_at DESC. Returns the matching images and the total count.
-func (r *ImageRepository) FindAll(page, limit int, albumID *int64, tag string) ([]model.Image, int, error) {
+// viewerID is 0 for guests; isAdmin bypasses privacy checks.
+func (r *ImageRepository) FindAll(page, limit int, albumID *int64, tag string, viewerID int64, isAdmin bool) ([]model.Image, int, error) {
 	// Build WHERE clauses and args dynamically
 	var conditions []string
 	var args []interface{}
 
 	if albumID != nil {
-		conditions = append(conditions, "album_id = ?")
+		conditions = append(conditions, "i.album_id = ?")
 		args = append(args, *albumID)
 	}
 
 	if tag != "" {
-		conditions = append(conditions, "tags LIKE ?")
+		conditions = append(conditions, "i.tags LIKE ?")
 		args = append(args, `%"`+tag+`"%`)
+	}
+
+	// Privacy filter
+	if !isAdmin {
+		if viewerID == 0 {
+			conditions = append(conditions, "i.privacy = 'public'")
+		} else {
+			conditions = append(conditions,
+				`(i.privacy = 'public' OR (i.privacy = 'friends' AND EXISTS(SELECT 1 FROM friends WHERE user_id = ? AND friend_id = i.uploaded_by)) OR i.uploaded_by = ?)`)
+			args = append(args, viewerID, viewerID)
+		}
 	}
 
 	whereClause := ""
@@ -83,7 +95,7 @@ func (r *ImageRepository) FindAll(page, limit int, albumID *int64, tag string) (
 
 	// Count total matching rows
 	var total int
-	countQuery := "SELECT COUNT(*) FROM images " + whereClause
+	countQuery := "SELECT COUNT(*) FROM images i " + whereClause
 	err := r.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, fmt.Errorf("repository: count images failed: %w", err)
@@ -91,8 +103,11 @@ func (r *ImageRepository) FindAll(page, limit int, albumID *int64, tag string) (
 
 	// Fetch paginated results
 	offset := (page - 1) * limit
-	selectQuery := `SELECT id, album_id, title, description, tags, lsky_url, thumbnail_url, uploaded_by, created_at, updated_at
-		FROM images ` + whereClause + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	selectQuery := `SELECT i.id, i.album_id, i.title, i.description, i.tags, i.lsky_url, i.thumbnail_url, i.uploaded_by, i.created_at, i.updated_at,
+		COALESCE(u.nickname, '') AS uploader_name
+		FROM images i
+		LEFT JOIN users u ON i.uploaded_by = u.id
+		` + whereClause + ` ORDER BY i.created_at DESC LIMIT ? OFFSET ?`
 	queryArgs := append(args, limit, offset)
 
 	rows, err := r.db.Query(selectQuery, queryArgs...)
@@ -108,6 +123,7 @@ func (r *ImageRepository) FindAll(page, limit int, albumID *int64, tag string) (
 		if err := rows.Scan(
 			&img.ID, &img.AlbumID, &img.Title, &img.Description, &tagsJSON,
 			&img.LskyURL, &img.ThumbnailURL, &img.UploadedBy, &img.CreatedAt, &img.UpdatedAt,
+			&img.UploaderName,
 		); err != nil {
 			return nil, 0, fmt.Errorf("repository: scan image failed: %w", err)
 		}
@@ -134,12 +150,15 @@ func (r *ImageRepository) FindByID(id int64) (*model.Image, error) {
 	err := r.db.QueryRow(
 		`SELECT i.id, i.album_id, i.title, i.description, i.tags, i.lsky_url, i.thumbnail_url,
 			i.uploaded_by, i.created_at, i.updated_at,
-			COALESCE((SELECT COUNT(*) FROM comments WHERE image_id = i.id), 0) AS comment_count
-		 FROM images i WHERE i.id = ?`, id,
+			COALESCE((SELECT COUNT(*) FROM comments WHERE image_id = i.id), 0) AS comment_count,
+			COALESCE(u.nickname, '') AS uploader_name
+		 FROM images i
+		 LEFT JOIN users u ON i.uploaded_by = u.id
+		 WHERE i.id = ?`, id,
 	).Scan(
 		&img.ID, &img.AlbumID, &img.Title, &img.Description, &tagsJSON,
 		&img.LskyURL, &img.ThumbnailURL, &img.UploadedBy, &img.CreatedAt, &img.UpdatedAt,
-		&img.CommentCount,
+		&img.CommentCount, &img.UploaderName,
 	)
 	if err != nil {
 		return nil, err
@@ -176,6 +195,27 @@ func (r *ImageRepository) Update(image *model.Image) error {
 	return nil
 }
 
+// UpdatePrivacy updates the privacy setting of an image.
+// Returns sql.ErrNoRows if the image does not exist.
+func (r *ImageRepository) UpdatePrivacy(id int64, privacy string) error {
+	result, err := r.db.Exec(
+		`UPDATE images SET privacy = ?, updated_at = ? WHERE id = ?`,
+		privacy, time.Now(), id,
+	)
+	if err != nil {
+		return fmt.Errorf("repository: update image privacy failed: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repository: rows affected failed: %w", err)
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 // Delete removes an image by its ID.
 // Returns sql.ErrNoRows if the image does not exist.
 func (r *ImageRepository) Delete(id int64) error {
@@ -197,7 +237,8 @@ func (r *ImageRepository) Delete(id int64) error {
 // SearchImages searches images by title, description, or tags using LIKE.
 // Returns the matching images, total count, and any error.
 // Results are ordered by created_at descending with pagination.
-func (r *ImageRepository) SearchImages(query string, page, limit int) ([]model.Image, int, error) {
+// viewerID is 0 for guests; isAdmin bypasses privacy checks.
+func (r *ImageRepository) SearchImages(query string, page, limit int, viewerID int64, isAdmin bool) ([]model.Image, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -208,24 +249,44 @@ func (r *ImageRepository) SearchImages(query string, page, limit int) ([]model.I
 	like := "%" + query + "%"
 	offset := (page - 1) * limit
 
+	// Build set of arguments
+	var countArgs []interface{}
+	var queryArgs []interface{}
+	countArgs = append(countArgs, like, like, like)
+	queryArgs = append(queryArgs, like, like, like)
+
+	privacyCond := ""
+	if !isAdmin {
+		if viewerID == 0 {
+			privacyCond = " AND i.privacy = 'public'"
+		} else {
+			privacyCond = " AND (i.privacy = 'public' OR (i.privacy = 'friends' AND EXISTS(SELECT 1 FROM friends WHERE user_id = ? AND friend_id = i.uploaded_by)) OR i.uploaded_by = ?)"
+			countArgs = append(countArgs, viewerID, viewerID)
+			queryArgs = append(queryArgs, viewerID, viewerID)
+		}
+	}
+
 	// Count total matching images
 	var total int
 	err := r.db.QueryRow(
-		`SELECT COUNT(*) FROM images WHERE title LIKE ? OR description LIKE ? OR tags LIKE ?`,
-		like, like, like,
+		`SELECT COUNT(*) FROM images i WHERE (i.title LIKE ? OR i.description LIKE ? OR i.tags LIKE ?)`+privacyCond,
+		countArgs...,
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, fmt.Errorf("repository: count search images failed: %w", err)
 	}
 
 	// Fetch paginated results
+	queryArgs = append(queryArgs, limit, offset)
 	rows, err := r.db.Query(
-		`SELECT id, album_id, title, description, tags, lsky_url, thumbnail_url, uploaded_by, created_at, updated_at
-		 FROM images
-		 WHERE title LIKE ? OR description LIKE ? OR tags LIKE ?
-		 ORDER BY created_at DESC
+		`SELECT i.id, i.album_id, i.title, i.description, i.tags, i.lsky_url, i.thumbnail_url, i.uploaded_by, i.created_at, i.updated_at,
+		 COALESCE(u.nickname, '') AS uploader_name
+		 FROM images i
+		 LEFT JOIN users u ON i.uploaded_by = u.id
+		 WHERE (i.title LIKE ? OR i.description LIKE ? OR i.tags LIKE ?)`+privacyCond+`
+		 ORDER BY i.created_at DESC
 		 LIMIT ? OFFSET ?`,
-		like, like, like, limit, offset,
+		queryArgs...,
 	)
 	if err != nil {
 		return nil, 0, fmt.Errorf("repository: search images failed: %w", err)
@@ -240,6 +301,7 @@ func (r *ImageRepository) SearchImages(query string, page, limit int) ([]model.I
 			&img.ID, &img.AlbumID, &img.Title, &img.Description, &tagsJSON,
 			&img.LskyURL, &img.ThumbnailURL, &img.UploadedBy,
 			&img.CreatedAt, &img.UpdatedAt,
+			&img.UploaderName,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("repository: scan search image row failed: %w", err)

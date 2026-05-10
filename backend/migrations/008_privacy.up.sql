@@ -1,0 +1,4 @@
+ALTER TABLE images ADD COLUMN privacy TEXT NOT NULL DEFAULT 'public';
+ALTER TABLE albums ADD COLUMN privacy TEXT NOT NULL DEFAULT 'public';
+ALTER TABLE albums ADD COLUMN is_friend_album INTEGER DEFAULT 0;
+ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id);

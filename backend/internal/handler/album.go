@@ -26,9 +26,17 @@ func NewAlbumHandler(albumRepo *repository.AlbumRepository) *AlbumHandler {
 // ListAlbums handles GET /api/albums.
 //
 // Returns all albums ordered by created_at descending. This endpoint is public.
+// OptionalAuth middleware injects user info when a valid token is present.
 func (h *AlbumHandler) ListAlbums(c echo.Context) error {
-	albums, err := h.albumRepo.FindAll()
+	viewerID, _ := c.Get(middleware.UserIDKey).(int64)
+	isAdmin := false
+	if role, ok := c.Get(middleware.UserRoleKey).(string); ok && role == model.UserRoleAdmin {
+		isAdmin = true
+	}
+
+	albums, err := h.albumRepo.FindAll(viewerID, isAdmin)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to list albums", "err", err)
 		return Error(c, http.StatusInternalServerError, "获取相册列表失败")
 	}
 	return Success(c, albums)
@@ -44,6 +52,7 @@ func (h *AlbumHandler) CreateAlbum(c echo.Context) error {
 		Description string `json:"description"`
 	}
 	if err := c.Bind(&req); err != nil {
+		middleware.GetLogger(c).Error("failed to bind create album request", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的请求参数")
 	}
 	if req.Name == "" {
@@ -62,6 +71,7 @@ func (h *AlbumHandler) CreateAlbum(c echo.Context) error {
 	}
 
 	if err := h.albumRepo.Create(album); err != nil {
+		middleware.GetLogger(c).Error("failed to create album", "err", err)
 		return Error(c, http.StatusInternalServerError, "创建相册失败")
 	}
 
@@ -76,6 +86,7 @@ func (h *AlbumHandler) UpdateAlbum(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to parse album id", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的相册ID")
 	}
 
@@ -90,6 +101,7 @@ func (h *AlbumHandler) UpdateAlbum(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "相册不存在")
 		}
+		middleware.GetLogger(c).Error("failed to find album for update", "err", err)
 		return Error(c, http.StatusInternalServerError, "服务器内部错误")
 	}
 
@@ -103,6 +115,7 @@ func (h *AlbumHandler) UpdateAlbum(c echo.Context) error {
 		Description string `json:"description"`
 	}
 	if err := c.Bind(&req); err != nil {
+		middleware.GetLogger(c).Error("failed to bind update album request", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的请求参数")
 	}
 
@@ -113,20 +126,22 @@ func (h *AlbumHandler) UpdateAlbum(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "相册不存在")
 		}
+		middleware.GetLogger(c).Error("failed to update album", "err", err)
 		return Error(c, http.StatusInternalServerError, "更新相册失败")
 	}
 
 	return Success(c, album)
 }
 
-// DeleteAlbum handles DELETE /api/albums/:id. Requires authentication.
+// UpdatePrivacy handles PUT /api/albums/:id/privacy. Requires authentication.
 //
-// Only the album creator or an admin can delete the album.
-// Returns 400 if the album still has associated images.
-func (h *AlbumHandler) DeleteAlbum(c echo.Context) error {
+// Only the album creator or an admin can change the privacy setting.
+// Request body: {"privacy": "public"|"friends"|"private"}
+func (h *AlbumHandler) UpdatePrivacy(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
+		middleware.GetLogger(c).Error("failed to parse album id", "err", err)
 		return Error(c, http.StatusBadRequest, "无效的相册ID")
 	}
 
@@ -141,6 +156,69 @@ func (h *AlbumHandler) DeleteAlbum(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "相册不存在")
 		}
+		middleware.GetLogger(c).Error("failed to get album for privacy update", "err", err)
+		return Error(c, http.StatusInternalServerError, "服务器内部错误")
+	}
+
+	// Only the creator or an admin can update privacy
+	if album.CreatedBy != userID && role != model.UserRoleAdmin {
+		return Error(c, http.StatusForbidden, "没有权限修改此相册的隐私设置")
+	}
+
+	var req struct {
+		Privacy string `json:"privacy"`
+	}
+	if err := c.Bind(&req); err != nil {
+		middleware.GetLogger(c).Error("failed to bind privacy update request", "err", err)
+		return Error(c, http.StatusBadRequest, "无效的请求参数")
+	}
+
+	// Validate privacy value
+	validPrivacy := map[string]bool{
+		"public":  true,
+		"friends": true,
+		"private": true,
+	}
+	if !validPrivacy[req.Privacy] {
+		return Error(c, http.StatusBadRequest, "无效的隐私设置，仅支持: public/friends/private")
+	}
+
+	if err := h.albumRepo.UpdatePrivacy(id, req.Privacy); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Error(c, http.StatusNotFound, "相册不存在")
+		}
+		middleware.GetLogger(c).Error("failed to update album privacy", "err", err)
+		return Error(c, http.StatusInternalServerError, "更新隐私设置失败")
+	}
+
+	album.Privacy = req.Privacy
+	return Success(c, album)
+}
+
+// DeleteAlbum handles DELETE /api/albums/:id. Requires authentication.
+//
+// Only the album creator or an admin can delete the album.
+// Returns 400 if the album still has associated images.
+func (h *AlbumHandler) DeleteAlbum(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		middleware.GetLogger(c).Error("failed to parse album id", "err", err)
+		return Error(c, http.StatusBadRequest, "无效的相册ID")
+	}
+
+	userID, ok := c.Get(middleware.UserIDKey).(int64)
+	if !ok {
+		return Error(c, http.StatusUnauthorized, "未登录")
+	}
+	role, _ := c.Get(middleware.UserRoleKey).(string)
+
+	album, err := h.albumRepo.FindByID(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Error(c, http.StatusNotFound, "相册不存在")
+		}
+		middleware.GetLogger(c).Error("failed to find album for deletion", "err", err)
 		return Error(c, http.StatusInternalServerError, "服务器内部错误")
 	}
 
@@ -156,6 +234,7 @@ func (h *AlbumHandler) DeleteAlbum(c echo.Context) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Error(c, http.StatusNotFound, "相册不存在")
 		}
+		middleware.GetLogger(c).Error("failed to delete album", "err", err)
 		return Error(c, http.StatusInternalServerError, "删除相册失败")
 	}
 

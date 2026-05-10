@@ -7,6 +7,7 @@ interface Image {
   lsky_url: string
   tags: string[]
   uploaded_by: number
+  uploader_name: string
   created_at: string
 }
 
