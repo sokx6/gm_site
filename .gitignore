@@ -69,3 +69,4 @@ session-ses_*.md
 gm_site_server
 server
 *.zip
+backend/config*.yaml
